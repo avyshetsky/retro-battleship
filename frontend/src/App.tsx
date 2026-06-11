@@ -82,13 +82,14 @@ function App() {
         difficulty: state.difficulty,
       });
     }
-    setLeaderboardKey((k) => k + 1);
+    // Refresh the table only after the score is persisted, otherwise the
+    // re-fetch races the write and reads stale data (the new score is missing).
     void recordGame({
       name: cleanName,
       won: state.winner === 'player',
       shots: game.shotsFired,
       difficulty: state.difficulty,
-    });
+    }).finally(() => setLeaderboardKey((k) => k + 1));
   }, [state.phase, state.winner, state.turn, name, game.shotsFired, state.difficulty]);
 
   const placingSpec =

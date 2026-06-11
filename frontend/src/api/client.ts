@@ -190,8 +190,12 @@ interface SupabaseRow {
   created_at: string;
 }
 
-/** Fetch the top leaderboard entries. Returns an empty list on failure. */
-export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
+/**
+ * Fetch the top leaderboard entries. Returns `null` when the request fails (so
+ * callers can fall back to local scores) and `[]` only when the backend is
+ * genuinely empty or unconfigured.
+ */
+export async function fetchLeaderboard(): Promise<LeaderboardEntry[] | null> {
   if (hasSupabase()) {
     try {
       const rows = await supabaseFetch<SupabaseRow[]>(
@@ -201,7 +205,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
       return rows.map((r) => ({ ...r, won: true }));
     } catch {
       setStatus('offline');
-      return [];
+      return null;
     }
   }
   if (!hasApi()) return [];
@@ -211,6 +215,6 @@ export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
     return data.entries;
   } catch {
     setStatus('offline');
-    return [];
+    return null;
   }
 }

@@ -43,7 +43,9 @@ export function TopScores({ refreshKey, currentShots, inBattle }: TopScoresProps
     if (!hasBackend()) return;
     let cancelled = false;
     void fetchLeaderboard().then((list) => {
-      if (cancelled) return;
+      // `null` means the request failed — keep the local fallback rather than
+      // showing an empty GLOBAL board.
+      if (cancelled || list === null) return;
       setGlobalEntries(
         list.slice(0, 5).map((e) => ({
           name: e.name,

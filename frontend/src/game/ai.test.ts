@@ -60,6 +60,30 @@ describe('AI move selection', () => {
     expect(state.activeHits).toHaveLength(0);
     expect(state.targetQueue).toHaveLength(0);
   });
+
+  it('keeps hunting a wounded adjacent ship after sinking its neighbour', () => {
+    // Ship A sits at (5,5)-(5,6); ship B (still afloat) sits at (5,7)-(5,8).
+    // The AI hits A then crosses into B before finishing A.
+    let state: AIState = createAI('medium');
+    state = registerResult(state, { row: 5, col: 6 }, 'hit'); // ship A
+    state = registerResult(state, { row: 5, col: 7 }, 'hit'); // ship B
+    // Sinking A must NOT discard the live hit on B.
+    state = registerResult(state, { row: 5, col: 5 }, 'sunk', [
+      { row: 5, col: 5 },
+      { row: 5, col: 6 },
+    ]);
+
+    expect(state.activeHits).toEqual([{ row: 5, col: 7 }]);
+    // It should immediately resume hunting around B's known hit, never the
+    // already-sunk ship A's cells.
+    const next = chooseMove(state, mulberry32(7));
+    const isNeighbourOfB =
+      Math.abs(next.row - 5) + Math.abs(next.col - 7) === 1;
+    expect(isNeighbourOfB).toBe(true);
+    expect([coordKey({ row: 5, col: 5 }), coordKey({ row: 5, col: 6 })]).not.toContain(
+      coordKey(next),
+    );
+  });
 });
 
 describe('AI can finish a full game', () => {

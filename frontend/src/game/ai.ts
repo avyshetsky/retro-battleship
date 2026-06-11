@@ -127,6 +127,13 @@ export function registerResult(
   state: AIState,
   target: Coord,
   result: ShotResult,
+  /**
+   * Cells of the ship that was just sunk. Passing them lets the AI retire only
+   * that ship's hits while keeping any hits it landed on a *different*,
+   * still-afloat ship (which happens when its line-search crosses into a
+   * neighbouring vessel). Omitting them falls back to clearing all memory.
+   */
+  sunkCells?: Coord[],
 ): AIState {
   if (result === 'already') return state;
 
@@ -140,9 +147,25 @@ export function registerResult(
     activeHits = [...state.activeHits, target];
     targetQueue = [...state.targetQueue, ...untriedNeighbours({ ...state, tried }, target)];
   } else if (result === 'sunk') {
-    // The wounded ship is finished — forget it and resume hunting from scratch.
-    activeHits = [];
-    targetQueue = [];
+    if (!sunkCells || sunkCells.length === 0) {
+      // No footprint known — fall back to forgetting and hunting from scratch.
+      activeHits = [];
+      targetQueue = [];
+    } else {
+      // Drop the sunk ship's cells, but keep hits that belong to other ships
+      // still afloat and re-seed the hunt around them so the AI doesn't
+      // abandon a ship it had already wounded.
+      const sunk = new Set(sunkCells.map(coordKey));
+      const remaining = [...state.activeHits, target].filter(
+        (c) => !sunk.has(coordKey(c)),
+      );
+      activeHits = remaining;
+      // Rebuild the hunt queue purely from the surviving hits, dropping stale
+      // neighbours that belonged to the ship that just sank.
+      targetQueue = remaining
+        .flatMap((h) => untriedNeighbours({ ...state, tried }, h))
+        .filter((c) => !sunk.has(coordKey(c)));
+    }
   }
 
   return { ...state, tried, activeHits, targetQueue };

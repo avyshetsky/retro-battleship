@@ -210,10 +210,15 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'AI_FIRE': {
       if (state.phase !== 'ai-turn') return state;
-      const { board, result } = fireAt(state.playerBoard, action.coord);
+      const { board, result, ship } = fireAt(state.playerBoard, action.coord);
       if (result === 'already') return state; // AI never repeats, but be safe
 
-      const aiState = registerResult(state.aiState, action.coord, result);
+      const aiState = registerResult(
+        state.aiState,
+        action.coord,
+        result,
+        result === 'sunk' ? ship?.cells : undefined,
+      );
       const turn = state.turn + 1;
       const base: GameState = { ...state, playerBoard: board, aiState, turn };
 
