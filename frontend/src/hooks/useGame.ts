@@ -177,11 +177,15 @@ function reducer(state: GameState, action: Action): GameState {
       const turn = state.turn + 1;
       const base: GameState = { ...state, playerBoard: board, aiState, turn };
 
+      // The AI's auto-response should not emit its own taunt: each player
+      // click yields exactly one taunt (from PLAYER_FIRE). The only exception
+      // is the AI winning, which is a terminal, one-off line.
       if (result === 'miss') {
-        return withEvent(
-          { ...base, phase: 'player-turn', log: logLine(state, '>> ENEMY SHOT: MISS.') },
-          'ai_miss',
-        );
+        return {
+          ...base,
+          phase: 'player-turn',
+          log: logLine(state, '>> ENEMY SHOT: MISS.'),
+        };
       }
       if (isFleetDestroyed(board)) {
         return withEvent(
@@ -194,18 +198,14 @@ function reducer(state: GameState, action: Action): GameState {
           'ai_win',
         );
       }
-      const event: TauntEvent = result === 'sunk' ? 'ai_sunk' : 'ai_hit';
-      return withEvent(
-        {
-          ...base,
-          phase: 'player-turn',
-          log: logLine(
-            state,
-            result === 'sunk' ? '>> ENEMY SHOT: SHIP SUNK!' : '>> ENEMY SHOT: HIT!',
-          ),
-        },
-        event,
-      );
+      return {
+        ...base,
+        phase: 'player-turn',
+        log: logLine(
+          state,
+          result === 'sunk' ? '>> ENEMY SHOT: SHIP SUNK!' : '>> ENEMY SHOT: HIT!',
+        ),
+      };
     }
 
     case 'SET_DIFFICULTY':
