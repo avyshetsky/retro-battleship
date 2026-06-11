@@ -9,7 +9,7 @@ import {
 import { createAI, registerResult } from '../game/ai';
 import type { AIState, Difficulty } from '../game/ai';
 import { FLEET } from '../game/constants';
-import type { Board, Coord, Orientation, Phase } from '../game/types';
+import type { Board, Coord, Orientation, Phase, ShipId } from '../game/types';
 import type { TauntEvent } from '../game/taunts';
 import { requestAiMove, requestTaunt } from '../api/client';
 import { sound } from '../audio/sound';
@@ -22,6 +22,8 @@ export interface GameState {
   aiState: AIState;
   /** Index into FLEET of the next ship to place during setup. */
   placementIndex: number;
+  /** Id of an already-placed ship the player lifted to reposition, if any. */
+  repositioning: ShipId | null;
   orientation: Orientation;
   taunt: string;
   log: string[];
@@ -35,6 +37,7 @@ export interface GameState {
 type Action =
   | { type: 'ROTATE' }
   | { type: 'PLACE_SHIP'; origin: Coord }
+  | { type: 'PICKUP_SHIP'; id: ShipId }
   | { type: 'RANDOMIZE' }
   | { type: 'RESET_PLACEMENT' }
   | { type: 'START_GAME' }
@@ -52,6 +55,7 @@ function initialState(difficulty: Difficulty = 'hard'): GameState {
     aiBoard: createEmptyBoard(),
     aiState: createAI(difficulty),
     placementIndex: 0,
+    repositioning: null,
     orientation: 'horizontal',
     taunt: 'PLACE YOUR FLEET, ADMIRAL. I AM ALREADY BORED.',
     log: ['>> SYSTEM ONLINE. AWAITING FLEET DEPLOYMENT.'],
@@ -80,7 +84,11 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'PLACE_SHIP': {
       if (state.phase !== 'placement') return state;
-      const spec = FLEET[state.placementIndex];
+      // While repositioning we re-place the lifted ship; otherwise we place the
+      // next ship in the deployment sequence.
+      const spec = state.repositioning
+        ? FLEET.find((s) => s.id === state.repositioning)
+        : FLEET[state.placementIndex];
       if (!spec) return state;
       const next = placeShip(
         state.playerBoard,
@@ -89,11 +97,41 @@ function reducer(state: GameState, action: Action): GameState {
         state.orientation,
       );
       if (!next) return state; // illegal placement; UI plays an error sound
+      if (state.repositioning) {
+        return {
+          ...state,
+          playerBoard: next,
+          repositioning: null,
+          log: logLine(state, `>> ${spec.name.toUpperCase()} REPOSITIONED.`),
+        };
+      }
       return {
         ...state,
         playerBoard: next,
         placementIndex: state.placementIndex + 1,
         log: logLine(state, `>> ${spec.name.toUpperCase()} DEPLOYED.`),
+      };
+    }
+
+    case 'PICKUP_SHIP': {
+      if (state.phase !== 'placement') return state;
+      if (state.repositioning) return state; // already holding a ship
+      const ship = state.playerBoard.ships.find(
+        (s) => s.spec.id === action.id,
+      );
+      if (!ship) return state;
+      return {
+        ...state,
+        playerBoard: {
+          ships: state.playerBoard.ships.filter(
+            (s) => s.spec.id !== action.id,
+          ),
+          shots: new Map(state.playerBoard.shots),
+        },
+        // Adopt the lifted ship's orientation so its preview matches as it was.
+        orientation: ship.orientation,
+        repositioning: action.id,
+        log: logLine(state, `>> ${ship.spec.name.toUpperCase()} LIFTED — PICK A NEW SPOT.`),
       };
     }
 
@@ -103,6 +141,7 @@ function reducer(state: GameState, action: Action): GameState {
         ...state,
         playerBoard: randomFleet(),
         placementIndex: FLEET.length,
+        repositioning: null,
         log: logLine(state, '>> FLEET AUTO-DEPLOYED.'),
       };
     }
@@ -112,11 +151,12 @@ function reducer(state: GameState, action: Action): GameState {
         ...state,
         playerBoard: createEmptyBoard(),
         placementIndex: 0,
+        repositioning: null,
         log: logLine(state, '>> FLEET CLEARED.'),
       };
 
     case 'START_GAME': {
-      if (state.placementIndex < FLEET.length) return state;
+      if (state.placementIndex < FLEET.length || state.repositioning) return state;
       return withEvent(
         {
           ...state,
@@ -230,6 +270,7 @@ export interface UseGame {
   state: GameState;
   rotate: () => void;
   placeShipAt: (origin: Coord) => void;
+  pickupShip: (id: ShipId) => void;
   randomize: () => void;
   resetPlacement: () => void;
   startGame: () => void;
@@ -286,6 +327,7 @@ export function useGame(): UseGame {
     state,
     rotate: () => dispatch({ type: 'ROTATE' }),
     placeShipAt: (origin) => dispatch({ type: 'PLACE_SHIP', origin }),
+    pickupShip: (id) => dispatch({ type: 'PICKUP_SHIP', id }),
     randomize: () => dispatch({ type: 'RANDOMIZE' }),
     resetPlacement: () => dispatch({ type: 'RESET_PLACEMENT' }),
     startGame: () => dispatch({ type: 'START_GAME' }),

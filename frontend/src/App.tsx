@@ -5,7 +5,7 @@ import { FleetStatus } from './components/FleetStatus';
 import { TauntBox } from './components/TauntBox';
 import { Leaderboard } from './components/Leaderboard';
 import { useGame } from './hooks/useGame';
-import { canPlace, coordKey, shipCells } from './game/board';
+import { canPlace, coordKey, shipAt, shipCells } from './game/board';
 import { FLEET } from './game/constants';
 import type { Coord } from './game/types';
 import type { Difficulty } from './game/ai';
@@ -95,7 +95,11 @@ function App() {
   }, [state.phase, state.winner, state.turn, name, game.shotsFired, state.difficulty]);
 
   const placingSpec =
-    state.phase === 'placement' ? FLEET[state.placementIndex] : undefined;
+    state.phase === 'placement'
+      ? state.repositioning
+        ? FLEET.find((s) => s.id === state.repositioning)
+        : FLEET[state.placementIndex]
+      : undefined;
 
   const previewCells = (() => {
     if (!placingSpec || !hover) return undefined;
@@ -119,6 +123,19 @@ function App() {
     game.placeShipAt(coord);
   };
 
+  // During setup a click either lifts an already-placed ship (to move it) or
+  // drops the ship currently being placed/repositioned.
+  const handlePlacementClick = (coord: Coord) => {
+    sound.unlock();
+    const existing = shipAt(state.playerBoard, coord);
+    if (existing && !state.repositioning) {
+      sound.play('select');
+      game.pickupShip(existing.spec.id);
+      return;
+    }
+    handlePlace(coord);
+  };
+
   const handleFire = (coord: Coord) => {
     sound.unlock();
     if (state.phase !== 'player-turn') return;
@@ -127,7 +144,9 @@ function App() {
     game.fireAt(coord);
   };
 
-  const allPlaced = state.placementIndex >= FLEET.length;
+  const allPlaced =
+    state.placementIndex >= FLEET.length && !state.repositioning;
+  const placedIds = new Set(state.playerBoard.ships.map((s) => s.spec.id));
   const yourTurn = state.phase === 'player-turn';
 
   return (
@@ -225,7 +244,7 @@ function App() {
               reveal
               interactive={state.phase === 'placement'}
               label="YOUR WATERS"
-              onCellClick={handlePlace}
+              onCellClick={handlePlacementClick}
               onCellHover={setHover}
               previewCells={previewCells}
               previewValid={previewValid}
@@ -256,30 +275,29 @@ function App() {
         {state.phase === 'placement' ? (
           <div className="placement-controls">
             <div className="dock">
-              {FLEET.map((spec, i) => (
-                <div
-                  key={spec.id}
-                  className={`dock-ship ${
-                    i < state.placementIndex
-                      ? 'dock-placed'
-                      : i === state.placementIndex
-                        ? 'dock-active'
-                        : ''
-                  }`}
-                >
-                  <span className="dock-name">{spec.name}</span>
-                  <span
-                    className={`dock-pips${
-                      i === state.placementIndex &&
-                      state.orientation === 'vertical'
-                        ? ' dock-pips-v'
-                        : ''
+              {FLEET.map((spec) => {
+                const isActive = placingSpec?.id === spec.id;
+                const isPlaced = placedIds.has(spec.id);
+                return (
+                  <div
+                    key={spec.id}
+                    className={`dock-ship ${
+                      isActive ? 'dock-active' : isPlaced ? 'dock-placed' : ''
                     }`}
                   >
-                    {'▮'.repeat(spec.size)}
-                  </span>
-                </div>
-              ))}
+                    <span className="dock-name">{spec.name}</span>
+                    <span
+                      className={`dock-pips${
+                        isActive && state.orientation === 'vertical'
+                          ? ' dock-pips-v'
+                          : ''
+                      }`}
+                    >
+                      {'▮'.repeat(spec.size)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
             <div className="btn-row">
               <button
@@ -315,15 +333,35 @@ function App() {
               </button>
             </div>
             <p className="hint">
-              Placing <strong>{placingSpec?.name ?? 'fleet'}</strong> —
-              orientation{' '}
-              <strong className="orient">
-                {state.orientation === 'horizontal'
-                  ? 'HORIZONTAL ▶'
-                  : 'VERTICAL ▼'}
-              </strong>
-              . Hover your waters to preview, click to drop. ROTATE flips the
-              direction; RANDOMIZE auto-deploys.
+              {state.repositioning ? (
+                <>
+                  Re-deploying{' '}
+                  <strong>{placingSpec?.name ?? 'ship'}</strong> —{' '}
+                  <strong className="orient">
+                    {state.orientation === 'horizontal'
+                      ? 'HORIZONTAL ▶'
+                      : 'VERTICAL ▼'}
+                  </strong>
+                  . Click a free spot to drop it; ROTATE flips it.
+                </>
+              ) : allPlaced ? (
+                <>
+                  Fleet deployed. <strong>Click any ship to move it</strong>, or
+                  hit START BATTLE.
+                </>
+              ) : (
+                <>
+                  Placing <strong>{placingSpec?.name ?? 'fleet'}</strong> —
+                  orientation{' '}
+                  <strong className="orient">
+                    {state.orientation === 'horizontal'
+                      ? 'HORIZONTAL ▶'
+                      : 'VERTICAL ▼'}
+                  </strong>
+                  . Hover your waters to preview, click to drop. Click a placed
+                  ship to move it; ROTATE flips direction; RANDOMIZE auto-deploys.
+                </>
+              )}
             </p>
           </div>
         ) : (

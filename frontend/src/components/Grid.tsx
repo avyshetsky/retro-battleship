@@ -69,6 +69,7 @@ export function Grid({
                 interactive ? 'cell-interactive' : '',
                 isPreview ? (previewValid ? 'cell-preview' : 'cell-preview-bad') : '',
                 isHover ? 'cell-hover' : '',
+                view === 'ship' && interactive ? 'cell-movable' : '',
               ]
                 .filter(Boolean)
                 .join(' ');
@@ -103,10 +104,11 @@ export function Grid({
             })}
           </FragmentRow>
         ))}
-        {/* Draw a ship silhouette over each afloat, revealed ship so the fleet
-            reads as actual vessels (hull + bow + bridge) rather than plain
-            blocks. Sunk ships drop the hull and show the wreck + outline below.
-            Grid offset is +2: column 1 / row 1 are the axis labels. */}
+        {/* Draw a warship silhouette over each afloat, revealed ship so the
+            fleet reads as actual vessels (hull + superstructure + turrets)
+            rather than plain blocks. Sunk ships drop the hull and show the
+            wreck + outline below. Grid offset is +2: column 1 / row 1 are the
+            axis labels. */}
         {reveal &&
           board.ships
             .filter((ship) => !isSunk(ship))
@@ -127,7 +129,11 @@ export function Grid({
                     gridRow: `${minRow + 2} / span ${spanRow}`,
                   }}
                   aria-hidden
-                />
+                >
+                  <span className="ship-turret ship-aft" />
+                  <span className="ship-tower" />
+                  <span className="ship-turret ship-fore" />
+                </div>
               );
             })}
         {/* Outline every sunk ship's full footprint so its position is clear. */}

@@ -294,6 +294,13 @@
   background: var(--water-2);
   box-shadow: 0 0 8px var(--neon-cyan) inset;
 }
+/* A placed ship can be picked up and moved during setup. */
+.cell-movable {
+  cursor: move;
+}
+.cell-movable:hover {
+  box-shadow: 0 0 9px var(--neon-magenta) inset;
+}
 /* The hull silhouette (.ship-body) is drawn on top, so the cell itself just
    carries a faint deck tint that fills the footprint corners the hull leaves. */
 .cell-ship {
@@ -314,60 +321,113 @@
   overflow: visible;
   z-index: 2;
 }
-/* A stylized ship hull spanning a vessel's footprint: steel gradient, a pointed
-   bow (via clip-path), a deck centerline, and a small bridge. Pointer-events
-   off so it never blocks cell clicks; sits below detonations (z-index 2). */
+/* A top-down warship silhouette spanning a vessel's footprint: a chunky steel
+   hull with a blunt bow (clip-path), a central superstructure with a funnel,
+   and fore/aft gun turrets with barrels. Built from percentage-positioned
+   children so it scales to any ship length and to either orientation without
+   distortion. Pointer-events off so it never blocks cell clicks; sits below
+   detonations (z-index 2). */
 .ship-body {
   position: absolute;
   inset: 2px;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(180deg, #c2cae8 0%, #828cb8 44%, #424a72 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 0 6px rgba(0, 0, 0, 0.55);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
+/* Hull: rounded-beam steel shading (light deck, dark gunwales) + a bow point. */
 .ship-h {
-  clip-path: polygon(0% 22%, 80% 22%, 100% 50%, 80% 78%, 0% 78%);
+  background: linear-gradient(180deg, #353c61 0%, #939ec6 50%, #353c61 100%);
+  clip-path: polygon(1% 22%, 84% 17%, 99% 50%, 84% 83%, 1% 78%);
 }
 .ship-v {
-  clip-path: polygon(22% 0%, 78% 0%, 78% 80%, 50% 100%, 22% 80%);
+  background: linear-gradient(90deg, #353c61 0%, #939ec6 50%, #353c61 100%);
+  clip-path: polygon(22% 1%, 78% 1%, 83% 84%, 50% 99%, 17% 84%);
 }
-/* Deck centerline. */
-.ship-body::before {
+/* Central superstructure (bridge block). */
+.ship-tower {
+  position: absolute;
+  background: linear-gradient(180deg, #d2d8ef, #767fae);
+  border: 1px solid rgba(18, 22, 40, 0.6);
+  border-radius: 1px;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+.ship-h .ship-tower {
+  left: 40%;
+  width: 18%;
+  top: 24%;
+  height: 52%;
+}
+.ship-v .ship-tower {
+  top: 40%;
+  height: 18%;
+  left: 24%;
+  width: 52%;
+}
+/* Funnel atop the superstructure. */
+.ship-tower::before {
   content: '';
   position: absolute;
-  background: rgba(18, 22, 40, 0.5);
+  background: #1c2138;
+  border-radius: 1px;
 }
-.ship-h::before {
-  left: 6%;
-  right: 24%;
-  top: 47%;
-  height: 7%;
-}
-.ship-v::before {
-  top: 6%;
-  bottom: 24%;
-  left: 47%;
-  width: 7%;
-}
-/* Bridge / superstructure block. */
-.ship-body::after {
-  content: '';
-  position: absolute;
-  background: #2b3052;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-.ship-h::after {
-  width: 15%;
-  height: 36%;
-  top: 32%;
-  left: 28%;
-}
-.ship-v::after {
-  height: 15%;
-  width: 36%;
-  left: 32%;
+.ship-h .ship-tower::before {
+  width: 30%;
+  height: 44%;
   top: 28%;
+  left: 52%;
+}
+.ship-v .ship-tower::before {
+  height: 30%;
+  width: 44%;
+  left: 28%;
+  top: 52%;
+}
+/* Fore and aft gun turrets. */
+.ship-turret {
+  position: absolute;
+  background: #20253f;
+  border: 1px solid rgba(190, 205, 255, 0.5);
+  border-radius: 2px;
+}
+.ship-h .ship-turret {
+  width: 11%;
+  height: 46%;
+  top: 27%;
+}
+.ship-h .ship-fore {
+  left: 65%;
+}
+.ship-h .ship-aft {
+  left: 17%;
+}
+.ship-v .ship-turret {
+  height: 11%;
+  width: 46%;
+  left: 27%;
+}
+.ship-v .ship-fore {
+  top: 65%;
+}
+.ship-v .ship-aft {
+  top: 17%;
+}
+/* Gun barrels protruding from each turret. */
+.ship-turret::before {
+  content: '';
+  position: absolute;
+  background: #0d101b;
+}
+.ship-h .ship-turret::before {
+  height: 16%;
+  width: 70%;
+  top: 42%;
+  left: 60%;
+}
+.ship-v .ship-turret::before {
+  width: 16%;
+  height: 70%;
+  left: 42%;
+  top: 60%;
 }
 /* An expanding shockwave ring radiates out from each detonation. */
 .cell-hit::after,
