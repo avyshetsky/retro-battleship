@@ -38,7 +38,11 @@ from .models import (
 )
 from .telemetry import count, get_tracer, record, setup_telemetry
 
-leaderboard = Leaderboard(path=os.getenv("LEADERBOARD_PATH"))
+# Persist to a mounted volume when one is present (e.g. Fly mounts at /data), so
+# the leaderboard is shared across every visitor and survives restarts. Falls
+# back to in-memory when no writable volume exists.
+_default_leaderboard_path = "/data/leaderboard.json" if os.path.isdir("/data") else None
+leaderboard = Leaderboard(path=os.getenv("LEADERBOARD_PATH", _default_leaderboard_path))
 
 
 @asynccontextmanager

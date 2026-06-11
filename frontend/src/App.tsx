@@ -4,8 +4,8 @@ import { Grid } from './components/Grid';
 import { FleetStatus } from './components/FleetStatus';
 import { TauntBox } from './components/TauntBox';
 import { TopScores } from './components/TopScores';
-import { Sharks } from './components/Sharks';
 import { useGame } from './hooks/useGame';
+import { useSharks } from './hooks/useSharks';
 import { addScore } from './game/scores';
 import { canPlace, coordKey, shipAt, shipCells } from './game/board';
 import { FLEET } from './game/constants';
@@ -146,6 +146,9 @@ function App() {
   const placedIds = new Set(state.playerBoard.ships.map((s) => s.spec.id));
   const yourTurn = state.phase === 'player-turn';
   const inBattle = state.phase === 'player-turn' || state.phase === 'ai-turn';
+  const sharks = useSharks(inBattle, state.playerBoard, state.aiBoard);
+  const playerSharks = sharks.filter((s) => s.side === 'player');
+  const enemySharks = sharks.filter((s) => s.side === 'enemy');
 
   return (
     <div className="app crt">
@@ -233,7 +236,6 @@ function App() {
       <TauntBox taunt={state.taunt} />
 
       <main className="boards">
-        <Sharks key={inBattle ? 'battle' : 'idle'} active={inBattle} />
         <section className="board-col">
           {/* Legend sits on the board's outer (left) edge. */}
           <div className="board-stage">
@@ -247,6 +249,7 @@ function App() {
               onCellHover={setHover}
               previewCells={previewCells}
               previewValid={previewValid}
+              sharks={playerSharks}
             />
           </div>
         </section>
@@ -260,6 +263,7 @@ function App() {
               interactive={yourTurn}
               label="ENEMY WATERS"
               onCellClick={handleFire}
+              sharks={enemySharks}
             />
             <FleetStatus board={state.aiBoard} label="ENEMY FLEET" />
           </div>

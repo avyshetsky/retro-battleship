@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { coordKey, isSunk, shipAt } from '../game/board';
 import { BOARD_SIZE, COLUMN_LABELS, ROW_LABELS } from '../game/constants';
 import type { Board, CellView, Coord } from '../game/types';
+import type { BoardShark } from '../hooks/useSharks';
+import { SharkFin, SharkWave } from './SharkArt';
 
 interface GridProps {
   board: Board;
@@ -15,6 +17,8 @@ interface GridProps {
   previewCells?: Set<string>;
   previewValid?: boolean;
   onCellHover?: (coord: Coord | null) => void;
+  /** Ambient sharks currently surfacing in this board's open cells. */
+  sharks?: BoardShark[];
 }
 
 function cellView(board: Board, c: Coord, reveal: boolean): CellView {
@@ -38,6 +42,7 @@ export function Grid({
   previewCells,
   previewValid = true,
   onCellHover,
+  sharks,
 }: GridProps) {
   const [hover, setHover] = useState<Coord | null>(null);
 
@@ -156,6 +161,33 @@ export function Grid({
             />
           );
         })}
+        {/* Ambient sharks surface in their assigned cell, drift `span` cells in
+            `dir`, then dive. Grid offset is +2 (axis labels occupy line 1). */}
+        {sharks?.map((s) => (
+          <div
+            key={`shark-${s.id}`}
+            className={`cell-shark cell-shark-${s.kind}`}
+            style={
+              {
+                gridColumn: `${s.col + 2}`,
+                gridRow: `${s.row + 2}`,
+                '--tx': `${s.dir * s.span * 100}%`,
+                '--shark-dur': `${s.life}ms`,
+              } as React.CSSProperties
+            }
+            aria-hidden
+          >
+            <div className="cell-shark-move">
+              <div className="cell-shark-rise">
+                {s.kind === 'wave' ? (
+                  <SharkWave dir={s.dir} />
+                ) : (
+                  <SharkFin dir={s.dir} />
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

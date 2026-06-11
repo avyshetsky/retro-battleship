@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getTopScores } from '../game/scores';
+import { fetchLeaderboard, hasBackend } from '../api/client';
+import type { Difficulty } from '../game/ai';
 
 interface TopScoresProps {
   /** Bumped whenever a game finishes, to refresh the table. */
@@ -10,22 +12,62 @@ interface TopScoresProps {
   inBattle: boolean;
 }
 
+interface DisplayEntry {
+  name: string;
+  shots: number;
+  difficulty: Difficulty;
+  key: string;
+}
+
 /**
- * High-score panel shown beside the battle log. Lists the five best games (won
- * with the fewest shots) and a live counter of the player's current shots so
- * they can see how they're tracking against the record.
+ * High-score panel shown beside the battle log. When a backend is configured it
+ * shows the GLOBAL leaderboard (shared across every player); otherwise it falls
+ * back to this browser's local best games. Also shows a live counter of the
+ * player's current shots so they can see how they're tracking against the record.
  */
 export function TopScores({ refreshKey, currentShots, inBattle }: TopScoresProps) {
   // refreshKey changes after each finished game; re-read the stored table then.
-  const entries = useMemo(() => {
+  const localEntries = useMemo<DisplayEntry[]>(() => {
     void refreshKey;
-    return getTopScores();
+    return getTopScores().map((e) => ({
+      name: e.name,
+      shots: e.shots,
+      difficulty: e.difficulty,
+      key: `${e.name}-${e.createdAt}`,
+    }));
   }, [refreshKey]);
+
+  const [globalEntries, setGlobalEntries] = useState<DisplayEntry[] | null>(null);
+
+  useEffect(() => {
+    if (!hasBackend()) return;
+    let cancelled = false;
+    void fetchLeaderboard().then((list) => {
+      if (cancelled) return;
+      setGlobalEntries(
+        list.slice(0, 5).map((e) => ({
+          name: e.name,
+          shots: e.shots,
+          difficulty: e.difficulty,
+          key: `${e.name}-${e.created_at}`,
+        })),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  const usingGlobal = hasBackend() && globalEntries !== null;
+  const entries = usingGlobal ? globalEntries : localEntries;
   const best = entries.length > 0 ? entries[0].shots : null;
 
   return (
     <div className="top-scores">
-      <div className="panel-title">TOP SCORES</div>
+      <div className="panel-title">
+        TOP SCORES
+        <span className="ts-scope">{usingGlobal ? 'GLOBAL' : 'LOCAL'}</span>
+      </div>
       {entries.length === 0 ? (
         <div className="top-scores-empty">NO VICTORIES YET. BE THE FIRST.</div>
       ) : (
@@ -40,11 +82,11 @@ export function TopScores({ refreshKey, currentShots, inBattle }: TopScoresProps
           </thead>
           <tbody>
             {entries.map((e, i) => (
-              <tr key={`${e.name}-${e.createdAt}`}>
+              <tr key={e.key}>
                 <td>{i + 1}</td>
                 <td>{e.name}</td>
-                <td>{e.shots}</td>
-                <td>{e.difficulty.slice(0, 1).toUpperCase()}</td>
+                <td className="ts-shots">{e.shots}</td>
+                <td className="ts-mode">{e.difficulty.slice(0, 1).toUpperCase()}</td>
               </tr>
             ))}
           </tbody>
