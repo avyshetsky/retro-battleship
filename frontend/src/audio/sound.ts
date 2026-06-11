@@ -25,6 +25,8 @@ class SoundEngine {
   private musicStep = 0;
   private _muted = false;
   private _musicOn = false;
+  /** User's desired music state — defaults ON; actually starts on first gesture. */
+  private _musicWanted = true;
 
   /** Lazily create the AudioContext (must follow a user gesture in browsers). */
   private ensure(): AudioContext | null {
@@ -47,9 +49,14 @@ class SoundEngine {
     return this.ctx;
   }
 
-  /** Unlock audio after a user interaction (required by autoplay policies). */
+  /**
+   * Unlock audio after a user interaction (required by autoplay policies).
+   * If music is wanted (the default) but not yet playing, start it now that
+   * we finally have a user gesture to satisfy the browser's autoplay policy.
+   */
   unlock(): void {
     this.ensure();
+    if (this._musicWanted && !this._musicOn) this.startMusic();
   }
 
   get muted(): boolean {
@@ -66,8 +73,9 @@ class SoundEngine {
     return this._muted;
   }
 
+  /** Reflects the user's desired music state (what the toggle shows). */
   get musicOn(): boolean {
-    return this._musicOn;
+    return this._musicWanted;
   }
 
   private tone(
@@ -255,12 +263,13 @@ class SoundEngine {
   }
 
   toggleMusic(): boolean {
-    if (this._musicOn) {
-      this.stopMusic();
-    } else {
+    this._musicWanted = !this._musicWanted;
+    if (this._musicWanted) {
       this.startMusic();
+    } else {
+      this.stopMusic();
     }
-    return this._musicOn;
+    return this._musicWanted;
   }
 
   startMusic(): void {

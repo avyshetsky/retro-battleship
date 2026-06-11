@@ -35,6 +35,21 @@ function App() {
 
   useEffect(() => onBackendStatus(setStatus), []);
 
+  // Music defaults ON, but browsers block audio until a user gesture. Start it
+  // on the first interaction anywhere on the page, then stop listening.
+  useEffect(() => {
+    const kick = () => {
+      sound.unlock();
+      setMusicOn(sound.musicOn);
+    };
+    window.addEventListener('pointerdown', kick, { once: true });
+    window.addEventListener('keydown', kick, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', kick);
+      window.removeEventListener('keydown', kick);
+    };
+  }, []);
+
   // Map game events to sound effects (covers both player and AI shots).
   useEffect(() => {
     const pending = state.pendingEvent;
