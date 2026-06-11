@@ -21,6 +21,7 @@ class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private musicGain: GainNode | null = null;
+  private sfxGain: GainNode | null = null;
   private musicTimer: number | null = null;
   private musicStep = 0;
   private _muted = false;
@@ -39,11 +40,15 @@ class SoundEngine {
     if (!this.ctx) {
       this.ctx = new Ctor();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this._muted ? 0 : 0.6;
+      this.master.gain.value = 0.6;
       this.master.connect(this.ctx.destination);
+      // Music and SFX have independent buses so each can be toggled alone.
       this.musicGain = this.ctx.createGain();
       this.musicGain.gain.value = 0.18;
       this.musicGain.connect(this.master);
+      this.sfxGain = this.ctx.createGain();
+      this.sfxGain.gain.value = this._muted ? 0 : 1;
+      this.sfxGain.connect(this.master);
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
     return this.ctx;
@@ -65,7 +70,8 @@ class SoundEngine {
 
   setMuted(muted: boolean): void {
     this._muted = muted;
-    if (this.master) this.master.gain.value = muted ? 0 : 0.6;
+    // Only the SFX bus is affected — music keeps playing through musicGain.
+    if (this.sfxGain) this.sfxGain.gain.value = muted ? 0 : 1;
   }
 
   toggleMuted(): boolean {
@@ -119,7 +125,7 @@ class SoundEngine {
     env.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     src.connect(filter);
     filter.connect(env);
-    env.connect(this.master!);
+    env.connect(this.sfxGain!);
     src.start(start);
     src.stop(start + duration);
   }
@@ -142,7 +148,7 @@ class SoundEngine {
     env.gain.setValueAtTime(peak, start);
     env.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     osc.connect(env);
-    env.connect(out ?? this.master!);
+    env.connect(out ?? this.sfxGain!);
     osc.start(start);
     osc.stop(start + duration + 0.02);
   }
@@ -184,22 +190,22 @@ class SoundEngine {
 
   play(name: SfxName): void {
     const ctx = this.ensure();
-    if (!ctx || !this.master) return;
+    if (!ctx || !this.sfxGain) return;
     const t = ctx.currentTime;
     switch (name) {
       case 'fire':
-        this.tone(880, t, 0.18, 'square', this.master, 0.4);
-        this.tone(440, t + 0.02, 0.18, 'square', this.master, 0.3);
+        this.tone(880, t, 0.18, 'square', this.sfxGain, 0.4);
+        this.tone(440, t + 0.02, 0.18, 'square', this.sfxGain, 0.3);
         break;
       case 'hit':
         // Punchy explosion: a pitch-dropping boom under a burst of debris noise.
         this.boom(t, 120, 42, 0.32, 0.95);
         this.noise(t, 0.4, 0.8);
-        this.tone(220, t, 0.1, 'square', this.master, 0.25);
+        this.tone(220, t, 0.1, 'square', this.sfxGain, 0.25);
         break;
       case 'miss':
-        this.tone(220, t, 0.18, 'sine', this.master, 0.3);
-        this.tone(140, t + 0.05, 0.22, 'sine', this.master, 0.25);
+        this.tone(220, t, 0.18, 'sine', this.sfxGain, 0.3);
+        this.tone(140, t + 0.05, 0.22, 'sine', this.sfxGain, 0.25);
         break;
       case 'sink': {
         // Big multi-stage detonation: deep boom, rolling debris, and a
@@ -209,27 +215,27 @@ class SoundEngine {
         this.noise(t + 0.18, 0.5, 0.5);
         this.noise(t + 0.38, 0.45, 0.35);
         [330, 262, 196, 147, 98].forEach((f, i) =>
-          this.tone(f, t + i * 0.09, 0.2, 'sawtooth', this.master!, 0.4),
+          this.tone(f, t + i * 0.09, 0.2, 'sawtooth', this.sfxGain!, 0.4),
         );
         break;
       }
       case 'place':
-        this.tone(660, t, 0.08, 'square', this.master, 0.3);
+        this.tone(660, t, 0.08, 'square', this.sfxGain, 0.3);
         break;
       case 'select':
-        this.tone(880, t, 0.05, 'square', this.master, 0.25);
+        this.tone(880, t, 0.05, 'square', this.sfxGain, 0.25);
         break;
       case 'invalid':
-        this.tone(120, t, 0.18, 'sawtooth', this.master, 0.4);
+        this.tone(120, t, 0.18, 'sawtooth', this.sfxGain, 0.4);
         break;
       case 'victory':
         [523, 659, 784, 1047].forEach((f, i) =>
-          this.tone(f, t + i * 0.14, 0.2, 'square', this.master!, 0.45),
+          this.tone(f, t + i * 0.14, 0.2, 'square', this.sfxGain!, 0.45),
         );
         break;
       case 'defeat':
         [392, 330, 262, 196].forEach((f, i) =>
-          this.tone(f, t + i * 0.18, 0.25, 'sawtooth', this.master!, 0.4),
+          this.tone(f, t + i * 0.18, 0.25, 'sawtooth', this.sfxGain!, 0.4),
         );
         break;
     }

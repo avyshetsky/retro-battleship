@@ -217,28 +217,34 @@ function App() {
 
       <main className="boards">
         <section className="board-col">
-          <Grid
-            board={state.playerBoard}
-            reveal
-            interactive={state.phase === 'placement'}
-            label="YOUR WATERS"
-            onCellClick={handlePlace}
-            onCellHover={setHover}
-            previewCells={previewCells}
-            previewValid={previewValid}
-          />
-          <FleetStatus board={state.playerBoard} label="YOUR FLEET" />
+          {/* Legend sits on the board's outer (left) edge. */}
+          <div className="board-stage">
+            <FleetStatus board={state.playerBoard} label="YOUR FLEET" />
+            <Grid
+              board={state.playerBoard}
+              reveal
+              interactive={state.phase === 'placement'}
+              label="YOUR WATERS"
+              onCellClick={handlePlace}
+              onCellHover={setHover}
+              previewCells={previewCells}
+              previewValid={previewValid}
+            />
+          </div>
         </section>
 
         <section className="board-col">
-          <Grid
-            board={state.aiBoard}
-            reveal={state.phase === 'game-over'}
-            interactive={yourTurn}
-            label="ENEMY WATERS"
-            onCellClick={handleFire}
-          />
-          <FleetStatus board={state.aiBoard} label="ENEMY FLEET" />
+          {/* Legend sits on the board's outer (right) edge. */}
+          <div className="board-stage">
+            <Grid
+              board={state.aiBoard}
+              reveal={state.phase === 'game-over'}
+              interactive={yourTurn}
+              label="ENEMY WATERS"
+              onCellClick={handleFire}
+            />
+            <FleetStatus board={state.aiBoard} label="ENEMY FLEET" />
+          </div>
           {state.phase === 'ai-turn' && (
             <div className="turn-pill">ENEMY TARGETING...</div>
           )}

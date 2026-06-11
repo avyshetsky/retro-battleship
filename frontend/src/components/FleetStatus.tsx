@@ -9,8 +9,10 @@ interface FleetStatusProps {
 }
 
 /**
- * A compact roster showing, at a glance, which ships in a board's fleet are
- * still afloat versus already sunk. Sunk ships are dimmed and struck through.
+ * A small fleet legend that sits on the outer edge of a board. It lists each
+ * ship as a compact pip bar — green while afloat, red and struck through once
+ * sunk — so you can tell at a glance which ships remain without cluttering the
+ * board itself.
  */
 export function FleetStatus({ board, label }: FleetStatusProps) {
   const afloat = FLEET.reduce((n, spec) => {
@@ -19,28 +21,31 @@ export function FleetStatus({ board, label }: FleetStatusProps) {
   }, 0);
 
   return (
-    <div className="fleet-status">
-      <span className="fleet-status-label">
-        {label} · {afloat}/{FLEET.length} AFLOAT
-      </span>
-      <div className="fleet-status-ships">
+    <aside className="fleet-legend" aria-label={`${label} — ships remaining`}>
+      <div className="fleet-legend-head">
+        <span className="fleet-legend-title">{label}</span>
+        <span className="fleet-legend-count">
+          {afloat}/{FLEET.length}
+        </span>
+      </div>
+      <ul className="fleet-legend-list">
         {FLEET.map((spec) => {
           const ship = board.ships.find((s) => s.spec.id === spec.id);
           const sunk = ship ? isSunk(ship) : false;
           return (
-            <div
+            <li
               key={spec.id}
-              className={`fleet-ship ${sunk ? 'fleet-ship-sunk' : 'fleet-ship-afloat'}`}
+              className={`fleet-legend-item ${sunk ? 'is-sunk' : 'is-afloat'}`}
               title={`${spec.name} — ${sunk ? 'SUNK' : 'AFLOAT'}`}
             >
-              <span className="fleet-ship-pips" aria-hidden>
+              <span className="fleet-legend-pips" aria-hidden>
                 {'▮'.repeat(spec.size)}
               </span>
-              <span className="fleet-ship-name">{spec.name}</span>
-            </div>
+              <span className="fleet-legend-name">{spec.name}</span>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </aside>
   );
 }

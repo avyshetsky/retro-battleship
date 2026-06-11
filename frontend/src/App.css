@@ -246,6 +246,7 @@
   letter-spacing: 1px;
 }
 .grid {
+  position: relative;
   display: grid;
   grid-template-columns: 22px repeat(10, 1fr);
   grid-auto-rows: 1fr;
@@ -349,10 +350,16 @@
     opacity: 0;
   }
 }
-/* A glowing frame drawn around a fully-sunk ship's footprint. The element is a
-   grid item spanning the ship's bounding box; it sits above the cells but lets
-   clicks through. */
+/* A glowing frame drawn around a fully-sunk ship's footprint. It is an
+   ABSOLUTELY-positioned grid item: it still snaps to the ship's bounding box
+   via grid-column/grid-row, but is removed from flow so it never displaces the
+   auto-placed cells. It sits above the cells and lets clicks through. */
 .ship-outline {
+  position: absolute;
+  /* The grid-column/grid-row place this element's grid area, which becomes its
+     containing block. inset:0 stretches it to fill that area (abs-positioned
+     grid items don't stretch on their own). */
+  inset: 0;
   pointer-events: none;
   margin: -1px;
   border: 2px solid var(--neon-yellow);
@@ -403,53 +410,92 @@
     transform: scale(1);
   }
 }
-/* Per-board roster of which ships remain afloat vs sunk. */
-.fleet-status {
-  margin-top: 10px;
+/* A board and its edge legend sit side by side; the grid flexes to fill the
+   remaining width while the legend keeps a fixed, compact column. */
+.board-stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+.board-stage .grid-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* Compact fleet legend pinned to a board's outer edge. */
+.fleet-legend {
+  flex: 0 0 76px;
+  width: 76px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  /* Nudge down so the legend's body lines up with the grid's first row,
+     clearing the grid's label that sits above the cells. */
+  margin-top: 28px;
+  padding: 8px 7px;
+  border: 1px solid #2c3050;
+  border-radius: 6px;
+  background: rgba(10, 14, 32, 0.5);
 }
-.fleet-status-label {
+.fleet-legend-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-bottom: 1px solid #232744;
+  padding-bottom: 6px;
+}
+.fleet-legend-title {
   font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  letter-spacing: 1px;
+  font-size: 7px;
+  line-height: 1.4;
+  letter-spacing: 0.5px;
   color: var(--neon-cyan);
 }
-.fleet-status-ships {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.fleet-ship {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 6px;
-  border: 1px solid #2c3050;
-  font-size: 11px;
-  transition: opacity 0.3s ease;
-}
-.fleet-ship-pips {
-  letter-spacing: 1px;
-}
-.fleet-ship-afloat .fleet-ship-pips {
+.fleet-legend-count {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
   color: var(--neon-green);
   text-shadow: 0 0 5px var(--neon-green);
 }
-.fleet-ship-afloat .fleet-ship-name {
+.fleet-legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fleet-legend-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transition: opacity 0.3s ease;
+}
+.fleet-legend-pips {
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.fleet-legend-name {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+.fleet-legend-item.is-afloat .fleet-legend-pips {
+  color: var(--neon-green);
+  text-shadow: 0 0 5px var(--neon-green);
+}
+.fleet-legend-item.is-afloat .fleet-legend-name {
   color: #cfd6ff;
 }
-.fleet-ship-sunk {
-  border-color: #7a0000;
-  background: rgba(122, 0, 0, 0.18);
-  opacity: 0.75;
+.fleet-legend-item.is-sunk {
+  opacity: 0.7;
 }
-.fleet-ship-sunk .fleet-ship-pips {
+.fleet-legend-item.is-sunk .fleet-legend-pips {
   color: #ff3b3b;
   text-shadow: 0 0 5px #ff0000;
 }
-.fleet-ship-sunk .fleet-ship-name {
+.fleet-legend-item.is-sunk .fleet-legend-name {
   color: #ff8a8a;
   text-decoration: line-through;
 }
