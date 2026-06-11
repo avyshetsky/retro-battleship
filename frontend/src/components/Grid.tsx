@@ -103,8 +103,34 @@ export function Grid({
             })}
           </FragmentRow>
         ))}
-        {/* Outline every sunk ship's full footprint so its position is clear.
+        {/* Draw a ship silhouette over each afloat, revealed ship so the fleet
+            reads as actual vessels (hull + bow + bridge) rather than plain
+            blocks. Sunk ships drop the hull and show the wreck + outline below.
             Grid offset is +2: column 1 / row 1 are the axis labels. */}
+        {reveal &&
+          board.ships
+            .filter((ship) => !isSunk(ship))
+            .map((ship) => {
+              const rows = ship.cells.map((c) => c.row);
+              const cols = ship.cells.map((c) => c.col);
+              const minRow = Math.min(...rows);
+              const minCol = Math.min(...cols);
+              const spanRow = Math.max(...rows) - minRow + 1;
+              const spanCol = Math.max(...cols) - minCol + 1;
+              const horizontal = spanCol >= spanRow;
+              return (
+                <div
+                  key={`hull-${ship.spec.id}`}
+                  className={`ship-body ${horizontal ? 'ship-h' : 'ship-v'}`}
+                  style={{
+                    gridColumn: `${minCol + 2} / span ${spanCol}`,
+                    gridRow: `${minRow + 2} / span ${spanRow}`,
+                  }}
+                  aria-hidden
+                />
+              );
+            })}
+        {/* Outline every sunk ship's full footprint so its position is clear. */}
         {board.ships.filter(isSunk).map((ship) => {
           const rows = ship.cells.map((c) => c.row);
           const cols = ship.cells.map((c) => c.col);

@@ -1,9 +1,12 @@
 """A tiny leaderboard store.
 
 By default it keeps the top scores in memory. When ``LEADERBOARD_PATH`` is set
-it also persists to a JSON file, so a single replica survives restarts. For a
-true multi-replica HA deployment you would swap this for a shared store
-(Redis/Postgres) — the interface is deliberately small to make that easy.
+the JSON file becomes the source of truth: every read and write re-reads the
+file under a lock and writes are atomic (temp file + ``os.replace``). Pointing
+multiple replicas at one shared volume therefore gives a consistent leaderboard
+across the whole HA fleet without a separate datastore. For higher write volume
+you would swap this for Redis/Postgres — the interface is deliberately small to
+make that easy.
 """
 
 from __future__ import annotations
@@ -40,8 +43,11 @@ class Leaderboard:
         if not self._path:
             return
         try:
-            with open(self._path, "w", encoding="utf-8") as fh:
+            # Atomic write so a concurrent reader never sees a half-written file.
+            tmp = f"{self._path}.{os.getpid()}.tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
                 json.dump([json.loads(e.model_dump_json()) for e in self._entries], fh)
+            os.replace(tmp, self._path)
         except OSError:
             pass
 
@@ -51,6 +57,8 @@ class Leaderboard:
             created_at=datetime.now(UTC),
         )
         with self._lock:
+            # Re-read the shared file so writes from sibling replicas aren't lost.
+            self._load()
             self._entries.append(entry)
             # Only wins rank; sort by fewest shots, then most recent.
             self._entries = sorted(
@@ -62,4 +70,6 @@ class Leaderboard:
 
     def top(self) -> list[LeaderboardEntry]:
         with self._lock:
+            # Re-read so every replica reflects the latest shared state.
+            self._load()
             return list(self._entries)

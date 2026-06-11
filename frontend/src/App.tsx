@@ -165,7 +165,7 @@ function App() {
           <button
             type="button"
             className="icon-btn"
-            aria-pressed={muted}
+            aria-pressed={!muted}
             onClick={() => {
               sound.unlock();
               setMuted(sound.toggleMuted());

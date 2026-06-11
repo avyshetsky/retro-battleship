@@ -22,6 +22,10 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       APP_VERSION: "0.1.0"
       HOSTNAME: api1
+      # Shared leaderboard file so both replicas stay consistent (see leaderboard.py).
+      LEADERBOARD_PATH: /data/leaderboard.json
+    volumes:
+      - leaderboard-data:/data
     depends_on:
       - otel-collector
 
@@ -32,6 +36,9 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       APP_VERSION: "0.1.0"
       HOSTNAME: api2
+      LEADERBOARD_PATH: /data/leaderboard.json
+    volumes:
+      - leaderboard-data:/data
     depends_on:
       - otel-collector
 
@@ -77,3 +84,6 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
+
+volumes:
+  leaderboard-data:
