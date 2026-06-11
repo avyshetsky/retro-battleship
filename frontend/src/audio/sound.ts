@@ -56,12 +56,11 @@ class SoundEngine {
 
   /**
    * Unlock audio after a user interaction (required by autoplay policies).
-   * If music is wanted (the default) but not yet playing, start it now that
-   * we finally have a user gesture to satisfy the browser's autoplay policy.
+   * This only primes the AudioContext — music does NOT auto-start here; it
+   * begins when the player presses START BATTLE (see startMusic).
    */
   unlock(): void {
     this.ensure();
-    if (this._musicWanted && !this._musicOn) this.startMusic();
   }
 
   get muted(): boolean {

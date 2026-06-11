@@ -3,8 +3,10 @@ import './App.css';
 import { Grid } from './components/Grid';
 import { FleetStatus } from './components/FleetStatus';
 import { TauntBox } from './components/TauntBox';
-import { Leaderboard } from './components/Leaderboard';
+import { TopScores } from './components/TopScores';
+import { Sharks } from './components/Sharks';
 import { useGame } from './hooks/useGame';
+import { addScore } from './game/scores';
 import { canPlace, coordKey, shipAt, shipCells } from './game/board';
 import { FLEET } from './game/constants';
 import type { Coord } from './game/types';
@@ -35,21 +37,6 @@ function App() {
   const lastSoundNonce = useRef<number>(-1);
 
   useEffect(() => onBackendStatus(setStatus), []);
-
-  // Music defaults ON, but browsers block audio until a user gesture. Start it
-  // on the first interaction anywhere on the page, then stop listening.
-  useEffect(() => {
-    const kick = () => {
-      sound.unlock();
-      setMusicOn(sound.musicOn);
-    };
-    window.addEventListener('pointerdown', kick, { once: true });
-    window.addEventListener('keydown', kick, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', kick);
-      window.removeEventListener('keydown', kick);
-    };
-  }, []);
 
   // Map game events to sound effects (covers both player and AI shots).
   useEffect(() => {
@@ -86,12 +73,22 @@ function App() {
     const gameId = `${state.winner}-${state.turn}`;
     if (recordedRef.current === gameId) return;
     recordedRef.current = gameId;
+    const cleanName = (name.trim() || 'ANON').slice(0, 16).toUpperCase();
+    // Local top-scores table (works even in LOCAL AI MODE): only wins count.
+    if (state.winner === 'player') {
+      addScore({
+        name: cleanName,
+        shots: game.shotsFired,
+        difficulty: state.difficulty,
+      });
+    }
+    setLeaderboardKey((k) => k + 1);
     void recordGame({
-      name: (name.trim() || 'ANON').slice(0, 16).toUpperCase(),
+      name: cleanName,
       won: state.winner === 'player',
       shots: game.shotsFired,
       difficulty: state.difficulty,
-    }).then(() => setLeaderboardKey((k) => k + 1));
+    });
   }, [state.phase, state.winner, state.turn, name, game.shotsFired, state.difficulty]);
 
   const placingSpec =
@@ -148,6 +145,7 @@ function App() {
     state.placementIndex >= FLEET.length && !state.repositioning;
   const placedIds = new Set(state.playerBoard.ships.map((s) => s.spec.id));
   const yourTurn = state.phase === 'player-turn';
+  const inBattle = state.phase === 'player-turn' || state.phase === 'ai-turn';
 
   return (
     <div className="app crt">
@@ -235,6 +233,7 @@ function App() {
       <TauntBox taunt={state.taunt} />
 
       <main className="boards">
+        <Sharks key={inBattle ? 'battle' : 'idle'} active={inBattle} />
         <section className="board-col">
           {/* Legend sits on the board's outer (left) edge. */}
           <div className="board-stage">
@@ -327,6 +326,9 @@ function App() {
                   sound.unlock();
                   sound.play('select');
                   game.startGame();
+                  // Music kicks in only now, when the battle begins.
+                  if (sound.musicOn) sound.startMusic();
+                  setMusicOn(sound.musicOn);
                 }}
               >
                 START BATTLE
@@ -374,7 +376,11 @@ function App() {
             </ul>
           </div>
         )}
-        <Leaderboard refreshKey={leaderboardKey} />
+        <TopScores
+          refreshKey={leaderboardKey}
+          currentShots={game.shotsFired}
+          inBattle={inBattle}
+        />
       </section>
 
       {state.phase === 'game-over' && (
@@ -392,6 +398,9 @@ function App() {
               onClick={() => {
                 sound.unlock();
                 sound.play('select');
+                // Back to placement: silence the music until the next battle.
+                sound.stopMusic();
+                setMusicOn(sound.musicOn);
                 game.newGame();
               }}
             >

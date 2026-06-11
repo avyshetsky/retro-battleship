@@ -223,6 +223,7 @@
 
 /* ----- Boards ----- */
 .boards {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 22px;
@@ -643,14 +644,19 @@
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 .placement-controls,
 .battle-log,
-.leaderboard {
+.top-scores {
   border: 2px solid var(--neon-cyan);
   background: rgba(20, 0, 51, 0.6);
   padding: 14px;
+}
+/* TOP SCORES sits beside the battle log and matches its height. */
+.top-scores {
+  display: flex;
+  flex-direction: column;
 }
 .dock {
   display: flex;
@@ -754,28 +760,225 @@
   color: var(--neon-green);
 }
 
-/* ----- Leaderboard ----- */
-.leaderboard table {
+/* ----- Top scores ----- */
+.top-scores table {
   width: 100%;
   border-collapse: collapse;
   font-size: 16px;
 }
-.leaderboard th,
-.leaderboard td {
+.top-scores th,
+.top-scores td {
   text-align: left;
   padding: 3px 6px;
   border-bottom: 1px solid rgba(47, 243, 224, 0.2);
 }
-.leaderboard th {
+.top-scores th {
   color: var(--neon-yellow);
 }
-.leaderboard td {
+.top-scores td {
   color: var(--neon-cyan);
 }
-.leaderboard-empty {
+.top-scores-empty {
   font-size: 16px;
   color: var(--neon-cyan);
   opacity: 0.7;
+}
+/* Live shot counter pinned to the bottom of the panel. */
+.top-scores-current {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(47, 243, 224, 0.25);
+}
+.top-scores-current-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--neon-magenta);
+}
+.top-scores-current-value {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: var(--neon-green);
+  text-shadow: 0 0 8px var(--neon-green);
+}
+.top-scores-current-best {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--neon-yellow);
+  opacity: 0.85;
+}
+
+/* ----- Ambient sharks ----- */
+.shark-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+/* Cruising dorsal fin that slides across the water. */
+.shark-fin {
+  position: absolute;
+  width: 46px;
+  height: 30px;
+}
+.shark-fin.swim-right {
+  left: -8%;
+  animation: fin-right var(--fin-dur, 9s) linear forwards;
+}
+.shark-fin.swim-left {
+  left: 108%;
+  animation: fin-left var(--fin-dur, 9s) linear forwards;
+}
+.shark-fin .fin {
+  position: absolute;
+  left: 0;
+  bottom: 6px;
+  width: 0;
+  height: 0;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-bottom: 22px solid #4a5780;
+  filter: drop-shadow(0 0 4px rgba(120, 160, 255, 0.6));
+  animation: fin-bob 1.4s ease-in-out infinite;
+}
+.shark-fin.swim-left .fin {
+  transform: scaleX(-1);
+}
+.shark-fin .wake {
+  position: absolute;
+  left: -2px;
+  bottom: 4px;
+  width: 40px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(160, 200, 255, 0.35);
+  filter: blur(1px);
+  animation: fin-bob 1.4s ease-in-out infinite;
+}
+@keyframes fin-right {
+  to {
+    left: 112%;
+  }
+}
+@keyframes fin-left {
+  to {
+    left: -12%;
+  }
+}
+@keyframes fin-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+/* Friendly shark that surfaces, grins, and waves. */
+.shark-wave {
+  position: absolute;
+  bottom: -70px;
+  width: 72px;
+  height: 64px;
+  animation: shark-surface 4.2s ease-in-out forwards;
+}
+.shark-buddy {
+  position: absolute;
+  inset: 0;
+}
+.shark-buddy::before {
+  /* rounded body/head */
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 16px;
+  width: 56px;
+  height: 44px;
+  background: linear-gradient(180deg, #8fa2d6 0%, #586191 65%, #3a4368 100%);
+  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
+  box-shadow: 0 0 8px rgba(120, 160, 255, 0.5);
+}
+.shark-dorsal {
+  position: absolute;
+  left: 30px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-bottom: 20px solid #4a5780;
+}
+.shark-eye {
+  position: absolute;
+  left: 24px;
+  top: 28px;
+  width: 7px;
+  height: 7px;
+  background: #0d101b;
+  border-radius: 50%;
+  box-shadow: 18px 0 0 #0d101b, 2px -2px 0 1px #fff, 20px -2px 0 1px #fff;
+}
+.shark-smile {
+  position: absolute;
+  left: 24px;
+  top: 40px;
+  width: 24px;
+  height: 12px;
+  border: 3px solid #0d101b;
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+}
+/* Waving pectoral fin. */
+.shark-arm {
+  position: absolute;
+  right: 2px;
+  top: 24px;
+  width: 18px;
+  height: 10px;
+  background: #4a5780;
+  border-radius: 40% 60% 60% 40%;
+  transform-origin: left center;
+  animation: shark-wave-arm 0.5s ease-in-out infinite;
+}
+.shark-wave .wake {
+  position: absolute;
+  left: 6px;
+  bottom: 2px;
+  width: 60px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(160, 200, 255, 0.3);
+  filter: blur(1px);
+}
+@keyframes shark-surface {
+  0% {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  18% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+@keyframes shark-wave-arm {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(28deg);
+  }
 }
 
 /* ----- Game over overlay ----- */
