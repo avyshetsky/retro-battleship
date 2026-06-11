@@ -28,7 +28,7 @@ const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 const TIMEOUT_MS = 2500;
 
 /** Whether the FastAPI backend (AI moves / taunts) is configured. */
-function hasApi(): boolean {
+export function hasApi(): boolean {
   return API_BASE.length > 0;
 }
 

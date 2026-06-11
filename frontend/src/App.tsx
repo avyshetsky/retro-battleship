@@ -15,6 +15,7 @@ import { sound } from './audio/sound';
 import type { MusicThemeId } from './audio/sound';
 import {
   getBackendStatus,
+  hasApi,
   hasBackend,
   onBackendStatus,
   recordGame,
@@ -417,7 +418,7 @@ function App() {
       <footer className="footer">
         <span>RETRO BATTLESHIP</span>
         <span>·</span>
-        <span>{hasBackend() ? 'AI SERVED BY API' : 'LOCAL AI MODE'}</span>
+        <span>{hasApi() ? 'AI SERVED BY API' : 'LOCAL AI MODE'}</span>
       </footer>
     </div>
   );
