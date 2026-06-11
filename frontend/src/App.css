@@ -73,7 +73,7 @@
 }
 .toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   flex-wrap: wrap;
 }
@@ -99,6 +99,11 @@
   width: 130px;
   outline: none;
 }
+/* The theme name ("VICTORY MARCH") needs a little more room than a fixed box. */
+.field select {
+  width: auto;
+  min-width: 130px;
+}
 .field input:focus,
 .field select:focus {
   border-color: var(--neon-magenta);
@@ -108,8 +113,11 @@
   background: var(--bg-1);
   color: var(--neon-cyan);
   border: 2px solid var(--neon-cyan);
-  padding: 8px 10px;
-  font-size: 15px;
+  /* Match the height of the .field inputs/selects so the toolbar reads as one
+     aligned row (padding + font mirror the .field input metrics). */
+  padding: 4px 12px;
+  font-size: 18px;
+  line-height: 1.2;
   cursor: pointer;
   letter-spacing: 1px;
 }
@@ -292,10 +300,54 @@
 }
 .cell-hit {
   background: radial-gradient(circle, var(--neon-yellow), var(--neon-magenta) 70%);
-  animation: pop 0.3s ease;
+  animation: explode 0.45s ease;
+  position: relative;
+  overflow: visible;
 }
 .cell-sunk {
   background: radial-gradient(circle, #ff7b00, #7a0000 70%);
+  animation: explode 0.5s ease;
+  position: relative;
+  overflow: visible;
+}
+/* An expanding shockwave ring radiates out from each detonation. */
+.cell-hit::after,
+.cell-sunk::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--neon-yellow);
+  pointer-events: none;
+  animation: shockwave 0.5s ease-out forwards;
+}
+.cell-sunk::after {
+  border-color: #ff7b00;
+  animation-duration: 0.6s;
+}
+@keyframes explode {
+  0% {
+    transform: scale(0.3);
+    filter: brightness(2.6);
+  }
+  45% {
+    transform: scale(1.3);
+    filter: brightness(1.8);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+@keyframes shockwave {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
 .cell-miss {
   background: var(--water);
@@ -384,6 +436,13 @@
   font-size: 16px;
   letter-spacing: 2px;
 }
+/* Stack the active ship's pips vertically to mirror a VERTICAL placement. */
+.dock-pips-v {
+  writing-mode: vertical-rl;
+  line-height: 0.7;
+  letter-spacing: 0;
+  display: inline-block;
+}
 .dock-active {
   border-color: var(--neon-yellow);
   color: var(--neon-yellow);
@@ -436,6 +495,10 @@
 }
 .hint strong {
   color: var(--neon-yellow);
+}
+.hint .orient {
+  color: var(--neon-green);
+  text-shadow: 0 0 6px var(--neon-green);
 }
 .panel-title {
   font-family: 'Press Start 2P', monospace;

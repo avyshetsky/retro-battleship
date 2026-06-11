@@ -9,6 +9,7 @@ import { FLEET } from './game/constants';
 import type { Coord } from './game/types';
 import type { Difficulty } from './game/ai';
 import { sound } from './audio/sound';
+import type { MusicThemeId } from './audio/sound';
 import {
   getBackendStatus,
   hasBackend,
@@ -26,6 +27,7 @@ function App() {
   const [name, setName] = useState('ADMIRAL');
   const [muted, setMuted] = useState(sound.muted);
   const [musicOn, setMusicOn] = useState(sound.musicOn);
+  const [musicTheme, setMusicTheme] = useState<MusicThemeId>(sound.themeId);
   const [status, setStatus] = useState<BackendStatus>(getBackendStatus());
   const [leaderboardKey, setLeaderboardKey] = useState(0);
   const recordedRef = useRef<string>('');
@@ -168,6 +170,25 @@ function App() {
           >
             {musicOn ? 'MUSIC ON' : 'MUSIC OFF'}
           </button>
+          <label className="field">
+            <span>THEME</span>
+            <select
+              value={musicTheme}
+              onChange={(e) => {
+                sound.unlock();
+                const id = e.target.value as MusicThemeId;
+                sound.setTheme(id);
+                setMusicTheme(id);
+              }}
+              aria-label="Music theme"
+            >
+              {sound.themes.map((th) => (
+                <option key={th.id} value={th.id}>
+                  {th.name}
+                </option>
+              ))}
+            </select>
+          </label>
           {hasBackend() && (
             <span className={`status status-${status}`} title="Backend status">
               ● {status.toUpperCase()}
@@ -223,13 +244,32 @@ function App() {
                   }`}
                 >
                   <span className="dock-name">{spec.name}</span>
-                  <span className="dock-pips">{'▮'.repeat(spec.size)}</span>
+                  <span
+                    className={`dock-pips${
+                      i === state.placementIndex &&
+                      state.orientation === 'vertical'
+                        ? ' dock-pips-v'
+                        : ''
+                    }`}
+                  >
+                    {'▮'.repeat(spec.size)}
+                  </span>
                 </div>
               ))}
             </div>
             <div className="btn-row">
-              <button type="button" className="btn" onClick={game.rotate}>
-                ROTATE ({state.orientation === 'horizontal' ? 'H' : 'V'})
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  sound.play('select');
+                  game.rotate();
+                }}
+              >
+                ROTATE:{' '}
+                {state.orientation === 'horizontal'
+                  ? 'HORIZONTAL ▶'
+                  : 'VERTICAL ▼'}
               </button>
               <button type="button" className="btn" onClick={game.randomize}>
                 RANDOMIZE
@@ -251,9 +291,15 @@ function App() {
               </button>
             </div>
             <p className="hint">
-              Hover your waters and click to place the{' '}
-              <strong>{placingSpec?.name ?? 'fleet'}</strong>. Use ROTATE to turn
-              the ship, or RANDOMIZE to auto-deploy.
+              Placing <strong>{placingSpec?.name ?? 'fleet'}</strong> —
+              orientation{' '}
+              <strong className="orient">
+                {state.orientation === 'horizontal'
+                  ? 'HORIZONTAL ▶'
+                  : 'VERTICAL ▼'}
+              </strong>
+              . Hover your waters to preview, click to drop. ROTATE flips the
+              direction; RANDOMIZE auto-deploys.
             </p>
           </div>
         ) : (
