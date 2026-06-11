@@ -424,15 +424,15 @@
 }
 /* Compact fleet legend pinned to a board's outer edge. */
 .fleet-legend {
-  flex: 0 0 76px;
-  width: 76px;
+  flex: 0 0 92px;
+  width: 92px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   /* Nudge down so the legend's body lines up with the grid's first row,
      clearing the grid's label that sits above the cells. */
   margin-top: 28px;
-  padding: 8px 7px;
+  padding: 10px 9px;
   border: 1px solid #2c3050;
   border-radius: 6px;
   background: rgba(10, 14, 32, 0.5);
@@ -440,20 +440,20 @@
 .fleet-legend-head {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   border-bottom: 1px solid #232744;
-  padding-bottom: 6px;
+  padding-bottom: 7px;
 }
 .fleet-legend-title {
   font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
+  font-size: 8px;
   line-height: 1.4;
   letter-spacing: 0.5px;
   color: var(--neon-cyan);
 }
 .fleet-legend-count {
   font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--neon-green);
   text-shadow: 0 0 5px var(--neon-green);
 }
@@ -463,22 +463,22 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 .fleet-legend-item {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   transition: opacity 0.3s ease;
 }
 .fleet-legend-pips {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1;
   letter-spacing: 1px;
   white-space: nowrap;
 }
 .fleet-legend-name {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.5px;
 }
 .fleet-legend-item.is-afloat .fleet-legend-pips {
