@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import { Grid } from './components/Grid';
+import { FleetStatus } from './components/FleetStatus';
 import { TauntBox } from './components/TauntBox';
 import { Leaderboard } from './components/Leaderboard';
 import { useGame } from './hooks/useGame';
@@ -226,6 +227,7 @@ function App() {
             previewCells={previewCells}
             previewValid={previewValid}
           />
+          <FleetStatus board={state.playerBoard} label="YOUR FLEET" />
         </section>
 
         <section className="board-col">
@@ -236,6 +238,7 @@ function App() {
             label="ENEMY WATERS"
             onCellClick={handleFire}
           />
+          <FleetStatus board={state.aiBoard} label="ENEMY FLEET" />
           {state.phase === 'ai-turn' && (
             <div className="turn-pill">ENEMY TARGETING...</div>
           )}

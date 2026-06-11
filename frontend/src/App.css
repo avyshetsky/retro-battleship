@@ -349,6 +349,29 @@
     opacity: 0;
   }
 }
+/* A glowing frame drawn around a fully-sunk ship's footprint. The element is a
+   grid item spanning the ship's bounding box; it sits above the cells but lets
+   clicks through. */
+.ship-outline {
+  pointer-events: none;
+  margin: -1px;
+  border: 2px solid var(--neon-yellow);
+  border-radius: 3px;
+  box-shadow:
+    0 0 9px var(--neon-yellow),
+    inset 0 0 7px rgba(255, 221, 0, 0.45);
+  z-index: 3;
+  animation: outline-pulse 1.8s ease-in-out infinite;
+}
+@keyframes outline-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
 .cell-miss {
   background: var(--water);
 }
@@ -379,6 +402,56 @@
   100% {
     transform: scale(1);
   }
+}
+/* Per-board roster of which ships remain afloat vs sunk. */
+.fleet-status {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fleet-status-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--neon-cyan);
+}
+.fleet-status-ships {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fleet-ship {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border: 1px solid #2c3050;
+  font-size: 11px;
+  transition: opacity 0.3s ease;
+}
+.fleet-ship-pips {
+  letter-spacing: 1px;
+}
+.fleet-ship-afloat .fleet-ship-pips {
+  color: var(--neon-green);
+  text-shadow: 0 0 5px var(--neon-green);
+}
+.fleet-ship-afloat .fleet-ship-name {
+  color: #cfd6ff;
+}
+.fleet-ship-sunk {
+  border-color: #7a0000;
+  background: rgba(122, 0, 0, 0.18);
+  opacity: 0.75;
+}
+.fleet-ship-sunk .fleet-ship-pips {
+  color: #ff3b3b;
+  text-shadow: 0 0 5px #ff0000;
+}
+.fleet-ship-sunk .fleet-ship-name {
+  color: #ff8a8a;
+  text-decoration: line-through;
 }
 .turn-pill {
   margin-top: 10px;

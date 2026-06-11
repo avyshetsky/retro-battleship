@@ -103,6 +103,27 @@ export function Grid({
             })}
           </FragmentRow>
         ))}
+        {/* Outline every sunk ship's full footprint so its position is clear.
+            Grid offset is +2: column 1 / row 1 are the axis labels. */}
+        {board.ships.filter(isSunk).map((ship) => {
+          const rows = ship.cells.map((c) => c.row);
+          const cols = ship.cells.map((c) => c.col);
+          const minRow = Math.min(...rows);
+          const minCol = Math.min(...cols);
+          const spanRow = Math.max(...rows) - minRow + 1;
+          const spanCol = Math.max(...cols) - minCol + 1;
+          return (
+            <div
+              key={`outline-${ship.spec.id}`}
+              className="ship-outline"
+              style={{
+                gridColumn: `${minCol + 2} / span ${spanCol}`,
+                gridRow: `${minRow + 2} / span ${spanRow}`,
+              }}
+              aria-hidden
+            />
+          );
+        })}
       </div>
     </div>
   );
