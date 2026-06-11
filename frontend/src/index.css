@@ -1,0 +1,41 @@
+:root {
+  --neon-cyan: #2ff3e0;
+  --neon-magenta: #ff2e97;
+  --neon-yellow: #f9f871;
+  --neon-green: #51ff0d;
+  --neon-blue: #1b6dff;
+  --bg-0: #0a0118;
+  --bg-1: #140033;
+  --bg-2: #1d0b3b;
+  --grid-line: rgba(47, 243, 224, 0.25);
+  --water: #0b1f4d;
+  --water-2: #0e2a63;
+  font-family: 'VT323', 'Courier New', monospace;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% -10%, var(--bg-2), var(--bg-0) 60%),
+    var(--bg-0);
+  color: var(--neon-cyan);
+  -webkit-font-smoothing: none;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}

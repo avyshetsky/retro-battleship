@@ -1,0 +1,46 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "AI moves served (rate)",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(battleship_ai_moves_total[1m])) by (difficulty)", "legendFormat": "{{difficulty}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Taunts served (rate)",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(battleship_taunts_total[1m])) by (event)", "legendFormat": "{{event}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "AI move latency p95 (ms)",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(battleship_ai_move_latency_milliseconds_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Games recorded",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sum(battleship_games_total)", "legendFormat": "games" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["battleship"],
+  "title": "Battleship API",
+  "version": 1
+}
