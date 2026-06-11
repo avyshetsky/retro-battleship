@@ -1,7 +1,20 @@
 import { useState } from 'react';
-import { coordKey, isSunk, shipAt } from '../game/board';
+import type { CSSProperties } from 'react';
+import { boundingBox, coordKey, isSunk, shipAt } from '../game/board';
 import { BOARD_SIZE, COLUMN_LABELS, ROW_LABELS } from '../game/constants';
 import type { Board, CellView, Coord } from '../game/types';
+
+/**
+ * Position a ship-sized overlay onto the CSS grid. The +2 offset accounts for
+ * the axis labels occupying the first column/row of the grid.
+ */
+function footprintStyle(cells: Coord[]): CSSProperties {
+  const { minRow, minCol, spanRow, spanCol } = boundingBox(cells);
+  return {
+    gridColumn: `${minCol + 2} / span ${spanCol}`,
+    gridRow: `${minRow + 2} / span ${spanRow}`,
+  };
+}
 
 interface GridProps {
   board: Board;
@@ -107,27 +120,18 @@ export function Grid({
         {/* Draw a warship silhouette over each afloat, revealed ship so the
             fleet reads as actual vessels (hull + superstructure + turrets)
             rather than plain blocks. Sunk ships drop the hull and show the
-            wreck + outline below. Grid offset is +2: column 1 / row 1 are the
-            axis labels. */}
+            wreck + outline below. */}
         {reveal &&
           board.ships
             .filter((ship) => !isSunk(ship))
             .map((ship) => {
-              const rows = ship.cells.map((c) => c.row);
-              const cols = ship.cells.map((c) => c.col);
-              const minRow = Math.min(...rows);
-              const minCol = Math.min(...cols);
-              const spanRow = Math.max(...rows) - minRow + 1;
-              const spanCol = Math.max(...cols) - minCol + 1;
+              const { spanRow, spanCol } = boundingBox(ship.cells);
               const horizontal = spanCol >= spanRow;
               return (
                 <div
                   key={`hull-${ship.spec.id}`}
                   className={`ship-body ${horizontal ? 'ship-h' : 'ship-v'}`}
-                  style={{
-                    gridColumn: `${minCol + 2} / span ${spanCol}`,
-                    gridRow: `${minRow + 2} / span ${spanRow}`,
-                  }}
+                  style={footprintStyle(ship.cells)}
                   aria-hidden
                 >
                   <span className="ship-turret ship-aft" />
@@ -137,25 +141,14 @@ export function Grid({
               );
             })}
         {/* Outline every sunk ship's full footprint so its position is clear. */}
-        {board.ships.filter(isSunk).map((ship) => {
-          const rows = ship.cells.map((c) => c.row);
-          const cols = ship.cells.map((c) => c.col);
-          const minRow = Math.min(...rows);
-          const minCol = Math.min(...cols);
-          const spanRow = Math.max(...rows) - minRow + 1;
-          const spanCol = Math.max(...cols) - minCol + 1;
-          return (
-            <div
-              key={`outline-${ship.spec.id}`}
-              className="ship-outline"
-              style={{
-                gridColumn: `${minCol + 2} / span ${spanCol}`,
-                gridRow: `${minRow + 2} / span ${spanRow}`,
-              }}
-              aria-hidden
-            />
-          );
-        })}
+        {board.ships.filter(isSunk).map((ship) => (
+          <div
+            key={`outline-${ship.spec.id}`}
+            className="ship-outline"
+            style={footprintStyle(ship.cells)}
+            aria-hidden
+          />
+        ))}
       </div>
     </div>
   );

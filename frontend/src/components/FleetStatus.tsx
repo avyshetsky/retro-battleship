@@ -1,4 +1,4 @@
-import { isSunk } from '../game/board';
+import { isSunk, shipById } from '../game/board';
 import { FLEET } from '../game/constants';
 import type { Board } from '../game/types';
 
@@ -15,10 +15,11 @@ interface FleetStatusProps {
  * board itself.
  */
 export function FleetStatus({ board, label }: FleetStatusProps) {
-  const afloat = FLEET.reduce((n, spec) => {
-    const ship = board.ships.find((s) => s.spec.id === spec.id);
-    return n + (ship && isSunk(ship) ? 0 : 1);
-  }, 0);
+  const statuses = FLEET.map((spec) => {
+    const ship = shipById(board, spec.id);
+    return { spec, sunk: ship ? isSunk(ship) : false };
+  });
+  const afloat = statuses.filter((s) => !s.sunk).length;
 
   return (
     <aside className="fleet-legend" aria-label={`${label} — ships remaining`}>
@@ -29,10 +30,7 @@ export function FleetStatus({ board, label }: FleetStatusProps) {
         </span>
       </div>
       <ul className="fleet-legend-list">
-        {FLEET.map((spec) => {
-          const ship = board.ships.find((s) => s.spec.id === spec.id);
-          const sunk = ship ? isSunk(ship) : false;
-          return (
+        {statuses.map(({ spec, sunk }) => (
             <li
               key={spec.id}
               className={`fleet-legend-item ${sunk ? 'is-sunk' : 'is-afloat'}`}
@@ -43,8 +41,7 @@ export function FleetStatus({ board, label }: FleetStatusProps) {
               </span>
               <span className="fleet-legend-name">{spec.name}</span>
             </li>
-          );
-        })}
+        ))}
       </ul>
     </aside>
   );

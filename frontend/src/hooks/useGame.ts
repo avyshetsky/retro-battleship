@@ -5,6 +5,7 @@ import {
   isFleetDestroyed,
   placeShip,
   randomFleet,
+  shipById,
 } from '../game/board';
 import { createAI, registerResult } from '../game/ai';
 import type { AIState, Difficulty } from '../game/ai';
@@ -116,9 +117,7 @@ function reducer(state: GameState, action: Action): GameState {
     case 'PICKUP_SHIP': {
       if (state.phase !== 'placement') return state;
       if (state.repositioning) return state; // already holding a ship
-      const ship = state.playerBoard.ships.find(
-        (s) => s.spec.id === action.id,
-      );
+      const ship = shipById(state.playerBoard, action.id);
       if (!ship) return state;
       return {
         ...state,

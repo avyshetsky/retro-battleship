@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  boundingBox,
   canPlace,
   coordKey,
   createEmptyBoard,
@@ -11,6 +12,7 @@ import {
   placeShip,
   randomFleet,
   shipAt,
+  shipById,
   shipCells,
   shipsRemaining,
 } from './board';
@@ -149,5 +151,28 @@ describe('firing', () => {
     expect(shipAt(board, { row: 4, col: 4 })?.spec.id).toBe('destroyer');
     expect(shipAt(board, { row: 0, col: 0 })).toBeUndefined();
     expect(isSunk(board.ships[0])).toBe(false);
+  });
+});
+
+describe('geometry + lookup helpers', () => {
+  it('finds a placed ship by id and reports undefined otherwise', () => {
+    const board = placeShip(createEmptyBoard(), carrier, { row: 0, col: 0 }, 'horizontal')!;
+    expect(shipById(board, 'carrier')?.spec.size).toBe(5);
+    expect(shipById(board, 'destroyer')).toBeUndefined();
+  });
+
+  it('computes the bounding box for horizontal and vertical footprints', () => {
+    expect(boundingBox(shipCells({ row: 2, col: 3 }, 'horizontal', 4))).toEqual({
+      minRow: 2,
+      minCol: 3,
+      spanRow: 1,
+      spanCol: 4,
+    });
+    expect(boundingBox(shipCells({ row: 5, col: 1 }, 'vertical', 3))).toEqual({
+      minRow: 5,
+      minCol: 1,
+      spanRow: 3,
+      spanCol: 1,
+    });
   });
 });

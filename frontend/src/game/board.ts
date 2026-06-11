@@ -4,6 +4,7 @@ import type {
   Coord,
   Orientation,
   Ship,
+  ShipId,
   ShipSpec,
   ShotResult,
 } from './types';
@@ -114,6 +115,33 @@ export function randomFleet(rng: Rng = Math.random): Board {
 export function shipAt(board: Board, c: Coord): Ship | undefined {
   const key = coordKey(c);
   return board.ships.find((ship) => ship.cells.some((cell) => coordKey(cell) === key));
+}
+
+/** Find a placed ship by its class id, if it is on the board. */
+export function shipById(board: Board, id: ShipId): Ship | undefined {
+  return board.ships.find((ship) => ship.spec.id === id);
+}
+
+/** The smallest grid-aligned rectangle covering a set of cells. */
+export interface BoundingBox {
+  minRow: number;
+  minCol: number;
+  spanRow: number;
+  spanCol: number;
+}
+
+/** Compute the {@link BoundingBox} enclosing a non-empty list of cells. */
+export function boundingBox(cells: Coord[]): BoundingBox {
+  const rows = cells.map((c) => c.row);
+  const cols = cells.map((c) => c.col);
+  const minRow = Math.min(...rows);
+  const minCol = Math.min(...cols);
+  return {
+    minRow,
+    minCol,
+    spanRow: Math.max(...rows) - minRow + 1,
+    spanCol: Math.max(...cols) - minCol + 1,
+  };
 }
 
 /** Whether every cell of a ship has been hit. */

@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 import { Grid } from './components/Grid';
 import { FleetStatus } from './components/FleetStatus';
 import { TauntBox } from './components/TauntBox';
 import { TopScores } from './components/TopScores';
+import { PlacementControls } from './components/PlacementControls';
+import { GameOverOverlay } from './components/GameOverOverlay';
 import { useGame } from './hooks/useGame';
-import { addScore } from './game/scores';
+import { useSoundEffects } from './hooks/useSoundEffects';
+import { useRecordGame } from './hooks/useRecordGame';
 import { canPlace, coordKey, shipAt, shipCells } from './game/board';
 import { FLEET } from './game/constants';
 import type { Coord } from './game/types';
@@ -17,7 +20,6 @@ import {
   hasApi,
   hasBackend,
   onBackendStatus,
-  recordGame,
 } from './api/client';
 import type { BackendStatus } from './api/client';
 
@@ -32,65 +34,19 @@ function App() {
   const [musicOn, setMusicOn] = useState(sound.musicOn);
   const [musicTheme, setMusicTheme] = useState<MusicThemeId>(sound.themeId);
   const [status, setStatus] = useState<BackendStatus>(getBackendStatus());
-  const [leaderboardKey, setLeaderboardKey] = useState(0);
-  const recordedRef = useRef<string>('');
-  const lastSoundNonce = useRef<number>(-1);
 
   useEffect(() => onBackendStatus(setStatus), []);
 
-  // Map game events to sound effects (covers both player and AI shots).
-  useEffect(() => {
-    const pending = state.pendingEvent;
-    if (!pending || lastSoundNonce.current === pending.nonce) return;
-    lastSoundNonce.current = pending.nonce;
-    switch (pending.event) {
-      case 'player_hit':
-      case 'ai_hit':
-        sound.play('hit');
-        break;
-      case 'player_miss':
-      case 'ai_miss':
-        sound.play('miss');
-        break;
-      case 'player_sunk':
-      case 'ai_sunk':
-        sound.play('sink');
-        break;
-      case 'player_win':
-        sound.play('victory');
-        break;
-      case 'ai_win':
-        sound.play('defeat');
-        break;
-      default:
-        break;
-    }
-  }, [state.pendingEvent]);
+  useSoundEffects(state.pendingEvent);
 
-  // Record a finished game on the leaderboard exactly once.
-  useEffect(() => {
-    if (state.phase !== 'game-over' || !state.winner) return;
-    const gameId = `${state.winner}-${state.turn}`;
-    if (recordedRef.current === gameId) return;
-    recordedRef.current = gameId;
-    const cleanName = (name.trim() || 'ANON').slice(0, 16).toUpperCase();
-    // Local top-scores table (works even in LOCAL AI MODE): only wins count.
-    if (state.winner === 'player') {
-      addScore({
-        name: cleanName,
-        shots: game.shotsFired,
-        difficulty: state.difficulty,
-      });
-    }
-    // Refresh the table only after the score is persisted, otherwise the
-    // re-fetch races the write and reads stale data (the new score is missing).
-    void recordGame({
-      name: cleanName,
-      won: state.winner === 'player',
-      shots: game.shotsFired,
-      difficulty: state.difficulty,
-    }).finally(() => setLeaderboardKey((k) => k + 1));
-  }, [state.phase, state.winner, state.turn, name, game.shotsFired, state.difficulty]);
+  const leaderboardKey = useRecordGame({
+    phase: state.phase,
+    winner: state.winner,
+    turn: state.turn,
+    shots: game.shotsFired,
+    difficulty: state.difficulty,
+    name,
+  });
 
   const placingSpec =
     state.phase === 'placement'
@@ -272,100 +228,27 @@ function App() {
 
       <section className="controls">
         {state.phase === 'placement' ? (
-          <div className="placement-controls">
-            <div className="dock">
-              {FLEET.map((spec) => {
-                const isActive = placingSpec?.id === spec.id;
-                const isPlaced = placedIds.has(spec.id);
-                return (
-                  <div
-                    key={spec.id}
-                    className={`dock-ship ${
-                      isActive ? 'dock-active' : isPlaced ? 'dock-placed' : ''
-                    }`}
-                  >
-                    <span className="dock-name">{spec.name}</span>
-                    <span
-                      className={`dock-pips${
-                        isActive && state.orientation === 'vertical'
-                          ? ' dock-pips-v'
-                          : ''
-                      }`}
-                    >
-                      {'▮'.repeat(spec.size)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="btn-row">
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  sound.play('select');
-                  game.rotate();
-                }}
-              >
-                ROTATE:{' '}
-                {state.orientation === 'horizontal'
-                  ? 'HORIZONTAL ▶'
-                  : 'VERTICAL ▼'}
-              </button>
-              <button type="button" className="btn" onClick={game.randomize}>
-                RANDOMIZE
-              </button>
-              <button type="button" className="btn" onClick={game.resetPlacement}>
-                RESET
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!allPlaced}
-                onClick={() => {
-                  sound.unlock();
-                  sound.play('select');
-                  game.startGame();
-                  // Music kicks in only now, when the battle begins.
-                  if (sound.musicOn) sound.startMusic();
-                  setMusicOn(sound.musicOn);
-                }}
-              >
-                START BATTLE
-              </button>
-            </div>
-            <p className="hint">
-              {state.repositioning ? (
-                <>
-                  Re-deploying{' '}
-                  <strong>{placingSpec?.name ?? 'ship'}</strong> —{' '}
-                  <strong className="orient">
-                    {state.orientation === 'horizontal'
-                      ? 'HORIZONTAL ▶'
-                      : 'VERTICAL ▼'}
-                  </strong>
-                  . Click a free spot to drop it; ROTATE flips it.
-                </>
-              ) : allPlaced ? (
-                <>
-                  Fleet deployed. <strong>Click any ship to move it</strong>, or
-                  hit START BATTLE.
-                </>
-              ) : (
-                <>
-                  Placing <strong>{placingSpec?.name ?? 'fleet'}</strong> —
-                  orientation{' '}
-                  <strong className="orient">
-                    {state.orientation === 'horizontal'
-                      ? 'HORIZONTAL ▶'
-                      : 'VERTICAL ▼'}
-                  </strong>
-                  . Hover your waters to preview, click to drop. Click a placed
-                  ship to move it; ROTATE flips direction; RANDOMIZE auto-deploys.
-                </>
-              )}
-            </p>
-          </div>
+          <PlacementControls
+            activeSpec={placingSpec}
+            placedIds={placedIds}
+            orientation={state.orientation}
+            repositioning={state.repositioning !== null}
+            allPlaced={allPlaced}
+            onRotate={() => {
+              sound.play('select');
+              game.rotate();
+            }}
+            onRandomize={game.randomize}
+            onReset={game.resetPlacement}
+            onStart={() => {
+              sound.unlock();
+              sound.play('select');
+              game.startGame();
+              // Music kicks in only now, when the battle begins.
+              if (sound.musicOn) sound.startMusic();
+              setMusicOn(sound.musicOn);
+            }}
+          />
         ) : (
           <div className="battle-log">
             <div className="panel-title">BATTLE LOG</div>
@@ -383,31 +266,19 @@ function App() {
         />
       </section>
 
-      {state.phase === 'game-over' && (
-        <div className="overlay">
-          <div className={`overlay-card ${state.winner === 'player' ? 'win' : 'lose'}`}>
-            <h2>{state.winner === 'player' ? 'VICTORY!' : 'DEFEATED'}</h2>
-            <p>
-              {state.winner === 'player'
-                ? `Enemy fleet sunk in ${game.shotsFired} shots.`
-                : 'Admiral Byte sank your fleet.'}
-            </p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                sound.unlock();
-                sound.play('select');
-                // Back to placement: silence the music until the next battle.
-                sound.stopMusic();
-                setMusicOn(sound.musicOn);
-                game.newGame();
-              }}
-            >
-              INSERT COIN — PLAY AGAIN
-            </button>
-          </div>
-        </div>
+      {state.phase === 'game-over' && state.winner && (
+        <GameOverOverlay
+          winner={state.winner}
+          shots={game.shotsFired}
+          onPlayAgain={() => {
+            sound.unlock();
+            sound.play('select');
+            // Back to placement: silence the music until the next battle.
+            sound.stopMusic();
+            setMusicOn(sound.musicOn);
+            game.newGame();
+          }}
+        />
       )}
 
       <footer className="footer">
