@@ -124,6 +124,7 @@ export async function requestTaunt(event: TauntEvent): Promise<string> {
 }
 
 export interface LeaderboardEntry {
+  id: string;
   name: string;
   won: boolean;
   shots: number;
@@ -184,6 +185,7 @@ export async function recordGame(entry: {
 
 /** Shape of a row returned by the Supabase leaderboard query. */
 interface SupabaseRow {
+  id: string;
   name: string;
   shots: number;
   difficulty: Difficulty;
@@ -199,7 +201,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardEntry[] | null> {
   if (hasSupabase()) {
     try {
       const rows = await supabaseFetch<SupabaseRow[]>(
-        '/rest/v1/scores?select=name,shots,difficulty,created_at&won=eq.true&order=shots.asc&limit=5',
+        '/rest/v1/scores?select=id,name,shots,difficulty,created_at&won=eq.true&order=shots.asc&limit=5',
       );
       setStatus('online');
       return rows.map((r) => ({ ...r, won: true }));

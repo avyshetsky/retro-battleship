@@ -29,11 +29,13 @@ export function TopScores({ refreshKey, currentShots, inBattle }: TopScoresProps
   // refreshKey changes after each finished game; re-read the stored table then.
   const localEntries = useMemo<DisplayEntry[]>(() => {
     void refreshKey;
-    return getTopScores().map((e) => ({
+    // Locally-stored rows can share a createdAt, so fold in the index to keep
+    // React keys unique (duplicate keys corrupt row reconciliation).
+    return getTopScores().map((e, i) => ({
       name: e.name,
       shots: e.shots,
       difficulty: e.difficulty,
-      key: `${e.name}-${e.createdAt}`,
+      key: `local-${e.createdAt}-${i}`,
     }));
   }, [refreshKey]);
 
@@ -51,7 +53,9 @@ export function TopScores({ refreshKey, currentShots, inBattle }: TopScoresProps
           name: e.name,
           shots: e.shots,
           difficulty: e.difficulty,
-          key: `${e.name}-${e.created_at}`,
+          // The row id is unique even when seeded rows share a created_at
+          // timestamp, so it's a safe React key.
+          key: e.id,
         })),
       );
     });
@@ -61,7 +65,11 @@ export function TopScores({ refreshKey, currentShots, inBattle }: TopScoresProps
   }, [refreshKey]);
 
   const usingGlobal = hasBackend() && globalEntries !== null;
-  const entries = usingGlobal ? globalEntries : localEntries;
+  // Always render fewest-shots-first and cap at five, independent of the source
+  // ordering, so a slow or out-of-order response can never show a jumbled board.
+  const entries = [...(usingGlobal ? globalEntries : localEntries)]
+    .sort((a, b) => a.shots - b.shots)
+    .slice(0, 5);
   const best = entries.length > 0 ? entries[0].shots : null;
 
   return (

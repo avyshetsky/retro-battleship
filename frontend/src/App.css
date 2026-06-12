@@ -99,22 +99,78 @@
   width: 130px;
   outline: none;
 }
-/* The theme name ("VICTORY MARCH") needs a little more room than a fixed box. */
-.field select {
-  width: auto;
-  min-width: 130px;
-}
-/* Keep the open dropdown's options the same size/color as the closed box. */
-.field select option {
-  font-family: 'VT323', 'Courier New', monospace;
-  font-size: 18px;
-  color: var(--neon-yellow);
-  background: var(--bg-1);
-}
 .field input:focus,
 .field select:focus {
   border-color: var(--neon-magenta);
   box-shadow: 0 0 8px var(--neon-magenta);
+}
+
+/* ----- Custom dropdown (RetroSelect) -----
+   Replaces native <select> so the open option list matches the closed box.
+   Native <option> styling is ignored by the OS popup (notably on macOS), which
+   is why the menu used to render large/off-theme; this control draws its own. */
+.retro-select {
+  position: relative;
+  min-width: 130px;
+}
+.retro-select-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-1);
+  color: var(--neon-yellow);
+  border: 2px solid var(--neon-cyan);
+  padding: 4px 8px;
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 18px;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+.retro-select-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.retro-select-button:focus-visible {
+  border-color: var(--neon-magenta);
+  box-shadow: 0 0 8px var(--neon-magenta);
+}
+.retro-select-caret {
+  font-size: 14px;
+  color: var(--neon-cyan);
+}
+.retro-select-list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  z-index: 80;
+  background: var(--bg-1);
+  border: 2px solid var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(47, 243, 224, 0.35);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.retro-select-option {
+  /* Identical font/size/color to the closed box. */
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--neon-yellow);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.retro-select-option.is-active {
+  background: rgba(47, 243, 224, 0.18);
+}
+.retro-select-option.is-selected {
+  color: var(--neon-cyan);
 }
 .icon-btn {
   background: var(--bg-1);

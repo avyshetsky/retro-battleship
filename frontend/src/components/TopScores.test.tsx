@@ -22,7 +22,14 @@ describe('TopScores leaderboard source', () => {
 
   it('shows the GLOBAL board when the fetch succeeds', async () => {
     const rows: LeaderboardEntry[] = [
-      { name: 'GLOBOSS', shots: 9, difficulty: 'hard', won: true, created_at: '2024-01-01' },
+      {
+        id: '1',
+        name: 'GLOBOSS',
+        shots: 9,
+        difficulty: 'hard',
+        won: true,
+        created_at: '2024-01-01',
+      },
     ];
     mockedFetch.mockResolvedValue(rows);
 
@@ -30,6 +37,25 @@ describe('TopScores leaderboard source', () => {
 
     await waitFor(() => expect(screen.getByText('GLOBOSS')).toBeInTheDocument());
     expect(screen.getByText('GLOBAL')).toBeInTheDocument();
+  });
+
+  it('renders every row in shots order even when rows share a created_at', async () => {
+    // Seeded rows inserted in one SQL statement share a created_at timestamp;
+    // the id keeps React keys unique and the panel sorts by shots ascending.
+    const rows: LeaderboardEntry[] = [
+      { id: 'a', name: 'Alex', shots: 41, difficulty: 'hard', won: true, created_at: 'T' },
+      { id: 'b', name: 'Alex', shots: 37, difficulty: 'hard', won: true, created_at: 'T' },
+      { id: 'c', name: 'Alex', shots: 57, difficulty: 'hard', won: true, created_at: 'T' },
+    ];
+    mockedFetch.mockResolvedValue(rows);
+
+    render(<TopScores refreshKey={0} currentShots={0} inBattle={false} />);
+
+    await waitFor(() => expect(screen.getAllByText('Alex')).toHaveLength(3));
+    const shots = screen
+      .getAllByText(/^(37|41|57)$/)
+      .map((el) => el.textContent);
+    expect(shots).toEqual(['37', '41', '57']);
   });
 
   it('falls back to local scores (not an empty board) when the fetch fails', async () => {

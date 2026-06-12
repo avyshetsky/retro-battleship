@@ -25,10 +25,13 @@ Each entry follows: **symptom → root cause → fix → how we verified it.**
 | B1 | SFX toggle highlighted `OFF` in green instead of `ON`     | User     | ✅    |
 | B2 | A winning score didn't appear on the leaderboard          | User     | ✅    |
 | B3 | Top scores didn't persist across browsers/sessions        | User     | ✅    |
+| B4 | Leaderboard briefly showed duplicate / out-of-order rows  | User     | ✅    |
+| B5 | The player's name was force-saved in ALL CAPS             | User     | ✅    |
 
-> The user also gave UI/design feedback (warship graphics, legend font size,
-> sharks, music timing). Those are product changes rather than bugs, so they live
-> in the PR/commit history, not in this log.
+> The user also gave UI/design feedback (warship graphics, legend/score/hint
+> font sizes, sharks, music timing, and matching the theme dropdown's open
+> options to the closed box). Those are product changes rather than bugs, so they
+> live in the PR/commit history, not in this log.
 
 ---
 
@@ -182,13 +185,46 @@ Found by the user through manual playtesting and reported back.
   (edits/deletes are blocked by RLS); a score saved in one browser appears in a
   fresh incognito window, confirming cross-session persistence.
 
+## B4. Leaderboard briefly showed duplicate / out-of-order rows on a new score
+
+- **Symptom:** After winning with a score that tied an existing entry, the
+  TOP SCORES table momentarily showed extra rows that were out of order (e.g.
+  `37, 41, 37`) and even an apparent extra row. A page refresh corrected the
+  order and dropped the phantom row.
+- **Root cause:** The seeded high scores were inserted in a single SQL statement,
+  so Postgres evaluated `now()` **once** and gave every seeded row an identical
+  `created_at`. The React row key was `${name}-${created_at}`, so those rows
+  shared the **same key**. Duplicate keys break React's list reconciliation,
+  producing ghost/duplicated rows and stale ordering until a full remount
+  (refresh) rebuilt the list.
+- **Fix:** Fetch the row's unique `id` from Supabase and use it as the React key
+  (`frontend/src/api/client.ts`, `frontend/src/components/TopScores.tsx`); local
+  rows fold the array index into their key. `TopScores` also now sorts entries by
+  shots ascending before rendering, so any out-of-order or slow response can
+  never display a jumbled board.
+- **Verified:** `frontend/src/components/TopScores.test.tsx` ("renders every row
+  in shots order even when rows share a created_at"); confirmed in the local
+  production build that the four Alex/ALEX rows render sorted (37, 37, 41, 57).
+
+## B5. The player's name was force-saved in ALL CAPS
+
+- **Symptom:** A score recorded as `Alex` showed up on the board as `ALEX`, even
+  though the user never typed it in all caps.
+- **Root cause:** `useRecordGame` upper-cased the callsign
+  (`name.trim().slice(0,16).toUpperCase()`) before writing it to the leaderboard.
+- **Fix:** Drop the `.toUpperCase()` and persist the name exactly as typed (still
+  trimmed and capped at 16 chars, with an `ANON` fallback). The pre-existing
+  `ALEX` row is leftover historical data; new wins preserve their original case.
+- **Verified:** `frontend/src/hooks/useRecordGame.ts`; the full suite still
+  passes and the local build records mixed-case names unchanged.
+
 ---
 
 ## Testing summary
 
 | Suite                | Count | Status |
 | -------------------- | ----- | ------ |
-| Frontend (Vitest)    | 28    | ✅     |
+| Frontend (Vitest)    | 33    | ✅     |
 | Backend (pytest)     | 16    | ✅     |
 | Typecheck (tsc)      | —     | ✅     |
 | Lint (eslint + ruff) | —     | ✅     |

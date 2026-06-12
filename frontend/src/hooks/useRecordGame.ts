@@ -36,7 +36,8 @@ export function useRecordGame({
     if (recordedRef.current === gameId) return;
     recordedRef.current = gameId;
 
-    const cleanName = (name.trim() || 'ANON').slice(0, 16).toUpperCase();
+    // Preserve the player's chosen capitalization (e.g. "Alex", not "ALEX").
+    const cleanName = (name.trim() || 'ANON').slice(0, 16);
     // Local top-scores table (works even in LOCAL AI MODE): only wins count.
     if (winner === 'player') {
       addScore({ name: cleanName, shots, difficulty });

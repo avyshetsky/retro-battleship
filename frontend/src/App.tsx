@@ -7,6 +7,7 @@ import { TopScores } from './components/TopScores';
 import { PlacementControls } from './components/PlacementControls';
 import { GameOverOverlay } from './components/GameOverOverlay';
 import { CallsignModal } from './components/CallsignModal';
+import { RetroSelect } from './components/RetroSelect';
 import { useGame } from './hooks/useGame';
 import { useSoundEffects } from './hooks/useSoundEffects';
 import { useRecordGame } from './hooks/useRecordGame';
@@ -135,21 +136,19 @@ function App() {
               aria-label="Player callsign"
             />
           </label>
-          <label className="field">
+          <div className="field">
             <span>SKILL</span>
-            <select
+            <RetroSelect
               value={state.difficulty}
               disabled={state.phase !== 'placement'}
-              onChange={(e) => game.setDifficulty(e.target.value as Difficulty)}
-              aria-label="Difficulty"
-            >
-              {DIFFICULTIES.map((d) => (
-                <option key={d} value={d}>
-                  {d.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(v) => game.setDifficulty(v as Difficulty)}
+              ariaLabel="Difficulty"
+              options={DIFFICULTIES.map((d) => ({
+                value: d,
+                label: d.toUpperCase(),
+              }))}
+            />
+          </div>
           <button
             type="button"
             className="icon-btn"
@@ -174,25 +173,23 @@ function App() {
           >
             {musicOn ? 'MUSIC ON' : 'MUSIC OFF'}
           </button>
-          <label className="field">
+          <div className="field">
             <span>THEME</span>
-            <select
+            <RetroSelect
               value={musicTheme}
-              onChange={(e) => {
+              onChange={(v) => {
                 sound.unlock();
-                const id = e.target.value as MusicThemeId;
+                const id = v as MusicThemeId;
                 sound.setTheme(id);
                 setMusicTheme(id);
               }}
-              aria-label="Music theme"
-            >
-              {sound.themes.map((th) => (
-                <option key={th.id} value={th.id}>
-                  {th.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              ariaLabel="Music theme"
+              options={sound.themes.map((th) => ({
+                value: th.id,
+                label: th.name,
+              }))}
+            />
+          </div>
           {hasBackend() && (
             <span className={`status status-${status}`} title="Backend status">
               ● {status.toUpperCase()}
