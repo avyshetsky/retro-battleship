@@ -48,7 +48,7 @@ type Action =
   | { type: 'SET_TAUNT'; text: string }
   | { type: 'NEW_GAME' };
 
-function initialState(difficulty: Difficulty = 'hard'): GameState {
+function initialState(difficulty: Difficulty = 'medium'): GameState {
   return {
     phase: 'placement',
     difficulty,
