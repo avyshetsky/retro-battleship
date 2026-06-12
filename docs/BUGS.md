@@ -1,14 +1,43 @@
 # Bug Report & Debugging Log
 
-This document records bugs found while building Retro Battleship and how each
-was fixed. It is a living document: a dedicated, exhaustive test pass is planned
-as a follow-up, and its findings will be appended here.
+This document records bugs found while building Retro Battleship and how each was
+fixed. Entries are grouped by **how the bug was discovered**:
+
+- **Section A — Caught by Devin** (pre-emptive code review, lint, unit tests, the
+  focused bug hunt, and the end-to-end refactor test pass).
+- **Section B — Reported by the user** (found through manual playtesting).
 
 Each entry follows: **symptom → root cause → fix → how we verified it.**
 
 ---
 
-## 1. AI could corrupt React state by mutating its target queue
+## At a glance
+
+| #  | Bug                                                        | Found by | Fixed |
+| -- | ---------------------------------------------------------- | -------- | ----- |
+| A1 | AI mutated React state via `targetQueue.shift()`          | Devin    | ✅    |
+| A2 | Cascading re-renders from `setState` inside effects       | Devin    | ✅    |
+| A3 | Game froze when the backend was slow/offline              | Devin    | ✅    |
+| A4 | Ship placement allowed off-board / overlapping ships      | Devin    | ✅    |
+| A5 | Repeated shots at the same cell wasted a turn             | Devin    | ✅    |
+| A6 | GLOBAL leaderboard never fell back to LOCAL on fetch fail | Devin    | ✅    |
+| A7 | AI abandoned a wounded ship after sinking an adjacent one | Devin    | ✅    |
+| B1 | SFX toggle highlighted `OFF` in green instead of `ON`     | User     | ✅    |
+| B2 | A winning score didn't appear on the leaderboard          | User     | ✅    |
+| B3 | Top scores didn't persist across browsers/sessions        | User     | ✅    |
+
+> The user also gave UI/design feedback (warship graphics, legend font size,
+> sharks, music timing). Those are product changes rather than bugs, so they live
+> in the PR/commit history, not in this log.
+
+---
+
+# Section A — Caught by Devin
+
+Found through code review, ESLint, the unit suites, a dedicated bug hunt, and the
+recorded end-to-end refactor test pass — without the user pointing them out.
+
+## A1. AI could corrupt React state by mutating its target queue
 
 - **Symptom:** Intermittent, hard-to-reproduce oddities in the AI's targeting
   after a hit, especially across rapid turns.
@@ -23,7 +52,7 @@ Each entry follows: **symptom → root cause → fix → how we verified it.**
   line", full-game integration test) all pass, and the same logic is mirrored
   and tested server-side in `backend/tests/test_ai.py`.
 
-## 2. Cascading re-renders from `setState` inside effects
+## A2. Cascading re-renders from `setState` inside effects
 
 - **Symptom:** ESLint (`react-hooks/set-state-in-effect`) flagged the taunt
   typewriter and the leaderboard loader; both called `setState` synchronously in
@@ -38,7 +67,7 @@ Each entry follows: **symptom → root cause → fix → how we verified it.**
 - **Verified:** `npm run lint` is clean; the typewriter and leaderboard behave
   identically in the browser.
 
-## 3. Game must never break when the backend is down
+## A3. Game must never break when the backend is down
 
 - **Symptom (anticipated failure mode):** If the API is slow or offline, naive
   `fetch` calls would hang or throw, freezing the game.
@@ -51,7 +80,7 @@ Each entry follows: **symptom → root cause → fix → how we verified it.**
 - **Verified:** Playing with `VITE_API_BASE_URL` unset (LOCAL AI MODE) plays a
   full game end-to-end; killing the backend mid-game does not interrupt play.
 
-## 4. Ship placement edge cases (off-board / overlap)
+## A4. Ship placement edge cases (off-board / overlap)
 
 - **Symptom (guarded):** Ships could be placed running off the grid edge or
   overlapping another ship.
@@ -64,7 +93,7 @@ Each entry follows: **symptom → root cause → fix → how we verified it.**
   board", "rejects overlapping placement", and "allows adjacent (touching)
   ships".
 
-## 5. Repeated shots at the same cell
+## A5. Repeated shots at the same cell
 
 - **Symptom (guarded):** Clicking an already-fired cell could waste a turn or
   double-count.
@@ -75,20 +104,98 @@ Each entry follows: **symptom → root cause → fix → how we verified it.**
 - **Verified:** `board.test.ts` "treats a repeated shot as a no-op"; `ai.test.ts`
   "never fires at the same cell twice over a full board sweep".
 
+## A6. GLOBAL leaderboard never fell back to LOCAL when Supabase was unreachable
+
+- **Symptom:** If the leaderboard fetch failed, the panel showed
+  "NO VICTORIES YET" under a GLOBAL badge instead of the player's local best
+  games — making a transient outage look like an empty board.
+- **Root cause:** On fetch failure `globalEntries` became `[]`, which the panel
+  rendered as an empty leaderboard rather than degrading to local data.
+- **Fix:** `TopScores` returns `null` (not `[]`) on failure and falls back to the
+  local table, keeping the board populated during an outage.
+- **Verified:** `frontend/src/components/TopScores.test.tsx` (null-on-failure
+  preserves the local fallback).
+
+## A7. AI abandoned a known hit after sinking an adjacent ship
+
+- **Symptom:** Mid-fight the AI would suddenly "play dumb" — reverting to random
+  hunting even though it had already landed a hit on a second, still-afloat ship.
+- **Root cause:** When the AI's line-search crossed from one ship into a touching
+  ship, sinking the first ship wiped **all** tracked hits, including the hit it
+  had already scored on the second ship.
+- **Fix:** On a sink, only the sunk ship's cells are cleared from the tracked
+  hits; hits on still-afloat adjacent ships are retained so the AI keeps hunting
+  them.
+- **Verified:** `frontend/src/game/ai.test.ts` (retains hits on a still-afloat
+  adjacent ship after a sink).
+
+> **End-to-end refactor test pass (no new bugs):** After decomposing the 422-line
+> `App.tsx` into hooks/components, a recorded golden-path playthrough (placement →
+> rotate/reposition → battle → VICTORY → leaderboard → PLAY AGAIN) confirmed the
+> refactor was behavior-preserving. All five UI flows passed with no regressions.
+> See `test-report.md`.
+
+---
+
+# Section B — Reported by the user
+
+Found by the user through manual playtesting and reported back.
+
+## B1. SFX toggle highlighted the wrong state
+
+- **Symptom:** The `SFX: OFF` label was highlighted in green (the "active" color)
+  while `SFX: ON` was not — the opposite of what the colors should mean.
+- **Root cause:** The toggle's active/green styling was keyed to the wrong
+  boolean state.
+- **Fix:** `SFX ON` now highlights green when sound effects are enabled and drops
+  the green when muted; the `MUSIC` toggle is unaffected.
+- **Verified:** Confirmed in the browser — toggling SFX flips the green highlight
+  to the correct (`ON`) state.
+
+## B2. A winning score didn't appear on the leaderboard
+
+- **Symptom:** The user finished a game with a record-worthy score, but it did
+  not show up on the TOP SCORES board (it would only appear a game later).
+- **Root cause (diagnosed by Devin after the user flagged the symptom):** On game
+  over, `App.tsx` bumped `leaderboardKey` (triggering the GLOBAL re-fetch) **at
+  the same time** it called `recordGame(...)`. The read raced the write, so it
+  almost always returned the pre-win data.
+- **Fix:** Refresh the leaderboard only **after** the save resolves —
+  `void recordGame({...}).then(() => setLeaderboardKey(k => k + 1))`. This works
+  for LOCAL mode too, where `recordGame` resolves instantly.
+- **Verified:** `frontend/src/App.test.tsx` asserts the re-fetch fires only after
+  the write resolves (read-after-write). Confirmed live in the recorded refactor
+  test: a fresh win (`REFTEST 18`) appeared on the GLOBAL board **immediately**,
+  ordered by shots next to the server-seeded `TESTBOT 17`.
+
+## B3. Top scores didn't persist across browsers/sessions
+
+- **Symptom:** Opening the game in an incognito window showed none of the
+  previously set high scores — the leaderboard was effectively per-browser.
+- **Root cause:** Scores were stored only in `localStorage`, which is scoped to a
+  single browser profile, so other users/sessions never saw them.
+- **Fix:** Added a shared backend leaderboard (Supabase Postgres + PostgREST)
+  read/written by every visitor, behind a feature flag with the existing
+  `localStorage` fallback. Row-level-security allows public reads and constrained
+  inserts only (no edits/deletes). The badge reads **GLOBAL** when configured.
+- **Verified:** Reads and constrained inserts succeed against the live project
+  (edits/deletes are blocked by RLS); a score saved in one browser appears in a
+  fresh incognito window, confirming cross-session persistence.
+
 ---
 
 ## Testing summary
 
 | Suite                | Count | Status |
 | -------------------- | ----- | ------ |
-| Frontend (Vitest)    | 22    | ✅     |
-| Backend (pytest)     | 14    | ✅     |
+| Frontend (Vitest)    | 28    | ✅     |
+| Backend (pytest)     | 16    | ✅     |
 | Typecheck (tsc)      | —     | ✅     |
 | Lint (eslint + ruff) | —     | ✅     |
+| End-to-end UI pass   | 5/5   | ✅     |
 
 ## Planned follow-up (dedicated test pass)
 
-- Full end-to-end UI testing (recorded golden paths) across all difficulties.
 - Property-based tests for board/AI invariants.
 - Load test the backend under the 2-replica HA setup and capture traces/metrics.
 - Accessibility audit (keyboard navigation, screen-reader labels).
