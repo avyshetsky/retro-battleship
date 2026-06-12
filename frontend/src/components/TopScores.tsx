@@ -86,7 +86,7 @@ export function TopScores({ refreshKey, currentShots, inBattle }: TopScoresProps
             {entries.map((e, i) => (
               <tr key={e.key}>
                 <td>{i + 1}</td>
-                <td>{e.name}</td>
+                <td className="ts-name">{e.name}</td>
                 <td className="ts-shots">{e.shots}</td>
                 <td className="ts-mode">{e.difficulty.slice(0, 1).toUpperCase()}</td>
               </tr>

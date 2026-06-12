@@ -6,11 +6,13 @@ import { TauntBox } from './components/TauntBox';
 import { TopScores } from './components/TopScores';
 import { PlacementControls } from './components/PlacementControls';
 import { GameOverOverlay } from './components/GameOverOverlay';
+import { CallsignModal } from './components/CallsignModal';
 import { useGame } from './hooks/useGame';
 import { useSoundEffects } from './hooks/useSoundEffects';
 import { useRecordGame } from './hooks/useRecordGame';
 import { canPlace, coordKey, shipAt, shipCells } from './game/board';
 import { FLEET } from './game/constants';
+import { DEFAULT_CALLSIGN, loadCallsign, saveCallsign } from './game/callsign';
 import type { Coord } from './game/types';
 import type { Difficulty } from './game/ai';
 import { sound } from './audio/sound';
@@ -29,7 +31,10 @@ function App() {
   const game = useGame();
   const { state } = game;
   const [hover, setHover] = useState<Coord | null>(null);
-  const [name, setName] = useState('ADMIRAL');
+  const storedCallsign = loadCallsign();
+  const [name, setName] = useState(storedCallsign ?? DEFAULT_CALLSIGN);
+  // First-time players (no remembered callsign) get a one-time prompt.
+  const [askCallsign, setAskCallsign] = useState(storedCallsign === null);
   const [muted, setMuted] = useState(sound.muted);
   const [musicOn, setMusicOn] = useState(sound.musicOn);
   const [musicTheme, setMusicTheme] = useState<MusicThemeId>(sound.themeId);
@@ -107,6 +112,15 @@ function App() {
   return (
     <div className="app crt">
       <div className="scanlines" aria-hidden />
+      {askCallsign && (
+        <CallsignModal
+          onConfirm={(callsign) => {
+            setName(callsign);
+            saveCallsign(callsign);
+            setAskCallsign(false);
+          }}
+        />
+      )}
       <header className="topbar">
         <h1 className="logo" data-text="BATTLESHIP">
           BATTLESHIP<span className="logo-sub">// 1984</span>
