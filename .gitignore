@@ -1,0 +1,25 @@
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/coverage/
+*.local
+
+# Python / backend
+__pycache__/
+*.py[cod]
+.venv/
+backend/.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.log
+.idea/
+.vscode/

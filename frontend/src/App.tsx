@@ -1,0 +1,304 @@
+import { useEffect, useState } from 'react';
+import './App.css';
+import { Grid } from './components/Grid';
+import { FleetStatus } from './components/FleetStatus';
+import { TauntBox } from './components/TauntBox';
+import { TopScores } from './components/TopScores';
+import { PlacementControls } from './components/PlacementControls';
+import { GameOverOverlay } from './components/GameOverOverlay';
+import { CallsignModal } from './components/CallsignModal';
+import { RetroSelect } from './components/RetroSelect';
+import { useGame } from './hooks/useGame';
+import { useSoundEffects } from './hooks/useSoundEffects';
+import { useRecordGame } from './hooks/useRecordGame';
+import { canPlace, coordKey, shipAt, shipCells } from './game/board';
+import { FLEET } from './game/constants';
+import { DEFAULT_CALLSIGN, loadCallsign, saveCallsign } from './game/callsign';
+import type { Coord } from './game/types';
+import type { Difficulty } from './game/ai';
+import { sound } from './audio/sound';
+import type { MusicThemeId } from './audio/sound';
+import {
+  getBackendStatus,
+  hasApi,
+  hasBackend,
+  onBackendStatus,
+} from './api/client';
+import type { BackendStatus } from './api/client';
+
+const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+
+function App() {
+  const game = useGame();
+  const { state } = game;
+  const [hover, setHover] = useState<Coord | null>(null);
+  const storedCallsign = loadCallsign();
+  const [name, setName] = useState(storedCallsign ?? DEFAULT_CALLSIGN);
+  // First-time players (no remembered callsign) get a one-time prompt.
+  const [askCallsign, setAskCallsign] = useState(storedCallsign === null);
+  const [muted, setMuted] = useState(sound.muted);
+  const [musicOn, setMusicOn] = useState(sound.musicOn);
+  const [musicTheme, setMusicTheme] = useState<MusicThemeId>(sound.themeId);
+  const [status, setStatus] = useState<BackendStatus>(getBackendStatus());
+
+  useEffect(() => onBackendStatus(setStatus), []);
+
+  useSoundEffects(state.pendingEvent);
+
+  const leaderboardKey = useRecordGame({
+    phase: state.phase,
+    winner: state.winner,
+    turn: state.turn,
+    shots: game.shotsFired,
+    difficulty: state.difficulty,
+    name,
+  });
+
+  const placingSpec =
+    state.phase === 'placement'
+      ? state.repositioning
+        ? FLEET.find((s) => s.id === state.repositioning)
+        : FLEET[state.placementIndex]
+      : undefined;
+
+  const previewCells = (() => {
+    if (!placingSpec || !hover) return undefined;
+    return new Set(
+      shipCells(hover, state.orientation, placingSpec.size).map(coordKey),
+    );
+  })();
+  const previewValid =
+    placingSpec && hover
+      ? canPlace(state.playerBoard, shipCells(hover, state.orientation, placingSpec.size))
+      : true;
+
+  const handlePlace = (coord: Coord) => {
+    sound.unlock();
+    if (!placingSpec) return;
+    const valid = canPlace(
+      state.playerBoard,
+      shipCells(coord, state.orientation, placingSpec.size),
+    );
+    sound.play(valid ? 'place' : 'invalid');
+    game.placeShipAt(coord);
+  };
+
+  // During setup a click either lifts an already-placed ship (to move it) or
+  // drops the ship currently being placed/repositioned.
+  const handlePlacementClick = (coord: Coord) => {
+    sound.unlock();
+    const existing = shipAt(state.playerBoard, coord);
+    if (existing && !state.repositioning) {
+      sound.play('select');
+      game.pickupShip(existing.spec.id);
+      return;
+    }
+    handlePlace(coord);
+  };
+
+  const handleFire = (coord: Coord) => {
+    sound.unlock();
+    if (state.phase !== 'player-turn') return;
+    if (state.aiBoard.shots.has(coordKey(coord))) return;
+    sound.play('fire');
+    game.fireAt(coord);
+  };
+
+  const allPlaced =
+    state.placementIndex >= FLEET.length && !state.repositioning;
+  const placedIds = new Set(state.playerBoard.ships.map((s) => s.spec.id));
+  const yourTurn = state.phase === 'player-turn';
+  const inBattle = state.phase === 'player-turn' || state.phase === 'ai-turn';
+
+  return (
+    <div className="app crt">
+      <div className="scanlines" aria-hidden />
+      {askCallsign && (
+        <CallsignModal
+          onConfirm={(callsign) => {
+            setName(callsign);
+            saveCallsign(callsign);
+            setAskCallsign(false);
+          }}
+        />
+      )}
+      <header className="topbar">
+        <h1 className="logo" data-text="BATTLESHIP">
+          BATTLESHIP<span className="logo-sub">// 1984</span>
+        </h1>
+        <div className="toolbar">
+          <label className="field">
+            <span>CALLSIGN</span>
+            <input
+              value={name}
+              maxLength={16}
+              onChange={(e) => setName(e.target.value)}
+              aria-label="Player callsign"
+            />
+          </label>
+          <div className="field">
+            <span>SKILL</span>
+            <RetroSelect
+              value={state.difficulty}
+              disabled={state.phase !== 'placement'}
+              onChange={(v) => game.setDifficulty(v as Difficulty)}
+              ariaLabel="Difficulty"
+              options={DIFFICULTIES.map((d) => ({
+                value: d,
+                label: d.toUpperCase(),
+              }))}
+            />
+          </div>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-pressed={!muted}
+            onClick={() => {
+              sound.unlock();
+              setMuted(sound.toggleMuted());
+            }}
+            title="Toggle sound effects"
+          >
+            {muted ? 'SFX OFF' : 'SFX ON'}
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-pressed={musicOn}
+            onClick={() => {
+              sound.unlock();
+              setMusicOn(sound.toggleMusic());
+            }}
+            title="Toggle music"
+          >
+            {musicOn ? 'MUSIC ON' : 'MUSIC OFF'}
+          </button>
+          <div className="field">
+            <span>THEME</span>
+            <RetroSelect
+              value={musicTheme}
+              onChange={(v) => {
+                sound.unlock();
+                const id = v as MusicThemeId;
+                sound.setTheme(id);
+                setMusicTheme(id);
+              }}
+              ariaLabel="Music theme"
+              options={sound.themes.map((th) => ({
+                value: th.id,
+                label: th.name,
+              }))}
+            />
+          </div>
+          {hasBackend() && (
+            <span className={`status status-${status}`} title="Backend status">
+              ● {status.toUpperCase()}
+            </span>
+          )}
+        </div>
+      </header>
+
+      <TauntBox taunt={state.taunt} />
+
+      <main className="boards">
+        <section className="board-col">
+          {/* Legend sits on the board's outer (left) edge. */}
+          <div className="board-stage">
+            <FleetStatus board={state.playerBoard} label="YOUR FLEET" />
+            <Grid
+              board={state.playerBoard}
+              reveal
+              interactive={state.phase === 'placement'}
+              label="YOUR WATERS"
+              onCellClick={handlePlacementClick}
+              onCellHover={setHover}
+              previewCells={previewCells}
+              previewValid={previewValid}
+            />
+          </div>
+        </section>
+
+        <section className="board-col">
+          {/* Legend sits on the board's outer (right) edge. */}
+          <div className="board-stage">
+            <Grid
+              board={state.aiBoard}
+              reveal={state.phase === 'game-over'}
+              interactive={yourTurn}
+              label="ENEMY WATERS"
+              onCellClick={handleFire}
+            />
+            <FleetStatus board={state.aiBoard} label="ENEMY FLEET" />
+          </div>
+          {state.phase === 'ai-turn' && (
+            <div className="turn-pill">ENEMY TARGETING...</div>
+          )}
+          {yourTurn && <div className="turn-pill turn-pill-go">YOUR MOVE</div>}
+        </section>
+      </main>
+
+      <section className="controls">
+        {state.phase === 'placement' ? (
+          <PlacementControls
+            activeSpec={placingSpec}
+            placedIds={placedIds}
+            orientation={state.orientation}
+            repositioning={state.repositioning !== null}
+            allPlaced={allPlaced}
+            onRotate={() => {
+              sound.play('select');
+              game.rotate();
+            }}
+            onRandomize={game.randomize}
+            onReset={game.resetPlacement}
+            onStart={() => {
+              sound.unlock();
+              sound.play('select');
+              game.startGame();
+              // Music kicks in only now, when the battle begins.
+              if (sound.musicOn) sound.startMusic();
+              setMusicOn(sound.musicOn);
+            }}
+          />
+        ) : (
+          <div className="battle-log">
+            <div className="panel-title">BATTLE LOG</div>
+            <ul>
+              {state.log.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <TopScores
+          refreshKey={leaderboardKey}
+          currentShots={game.shotsFired}
+          inBattle={inBattle}
+        />
+      </section>
+
+      {state.phase === 'game-over' && state.winner && (
+        <GameOverOverlay
+          winner={state.winner}
+          shots={game.shotsFired}
+          onPlayAgain={() => {
+            sound.unlock();
+            sound.play('select');
+            // Back to placement: silence the music until the next battle.
+            sound.stopMusic();
+            setMusicOn(sound.musicOn);
+            game.newGame();
+          }}
+        />
+      )}
+
+      <footer className="footer">
+        <span>RETRO BATTLESHIP</span>
+        <span>·</span>
+        <span>{hasApi() ? 'AI SERVED BY API' : 'LOCAL AI MODE'}</span>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
