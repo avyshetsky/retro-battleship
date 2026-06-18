@@ -8,7 +8,7 @@ genuinely pleasant to read, change, and operate.
 >
 > **Bug report:** [`docs/BUGS.md`](docs/BUGS.md)
 
-![retro battleship screenshot](docs/screenshot1.png)
+![retro battleship screenshot](docs/screenshot2.png)
 
 ## Features
 
