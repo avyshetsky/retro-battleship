@@ -7,7 +7,7 @@ genuinely pleasant to read, change, and operate.
 > **Play it:** _(public link added after deploy)_
 > **Bug report:** [`docs/BUGS.md`](docs/BUGS.md)
 
-![retro battleship screenshot](docs/screenshot.png)
+![retro battleship screenshot](docs/screenshot1.png)
 
 ## Features
 
