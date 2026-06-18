@@ -4,7 +4,8 @@ A neon, CRT-soaked, 80s-arcade take on **Battleship**, played online against
 **Admiral Byte** — a gleefully trash-talking AI. Built to be fun to play and
 genuinely pleasant to read, change, and operate.
 
-> **Play it:** _(public link added after deploy)_
+> **Play it:** <https://dist-xszqiqsl.devinapps.com>
+>
 > **Bug report:** [`docs/BUGS.md`](docs/BUGS.md)
 
 ![retro battleship screenshot](docs/screenshot1.png)
